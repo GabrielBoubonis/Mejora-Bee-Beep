@@ -165,10 +165,8 @@ void GuiEmoticons::loadEmoticons( int current_index )
     emoticon_button->setIconSize( gwe->emoticonSize() );
     emoticon_button->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
     emoticon_button->setFixedSize( gwe->emoticonButtonSize() );
-    if( Settings::instance().useDarkStyle() )
-      emoticon_button->setStyleSheet( QString( "QPushButton{ background-color: %1; } QPushButton:hover{ background-color: %2; }" ).arg( Bee::colorGrey().name(), Bee::colorOrange().name() ) );
-    else
-      emoticon_button->setStyleSheet( QString( "QPushButton{ background-color: %1; } QPushButton:hover{ background-color: %2; }" ).arg( Bee::colorWhite().name(), Bee::colorOrange().name() ) );
+    emoticon_button->setStyleSheet( QString( "QPushButton{ background-color: %1; border: none; border-radius: 6px; } QPushButton:hover{ background-color: %2; }" )
+                                      .arg( Bee::themeColor( Bee::ThemePanel ), Bee::themeColor( Bee::ThemeSelection ) ) );
     if( Settings::instance().useFontEmoticons() )
       emoticon_button->setFont( f );
     setEmoticonToButton( e, emoticon_button );
@@ -309,10 +307,7 @@ void GuiEmoticonWidget::clearLayout()
 
 void GuiEmoticonWidget::paintEmoticonButtons( int box_width )
 {
-  if( Settings::instance().useDarkStyle() )
-    setStyleSheet( QString( "QWidget { background-color: %1; }" ).arg( Bee::colorDarkGrey().lighter().name() ) );
-  else
-    setStyleSheet( QString( "QWidget { background-color: %1; }" ).arg( Bee::colorGrey().lighter().name() ) );
+  setStyleSheet( QString( "QWidget { background-color: %1; }" ).arg( Bee::themeColor( Bee::ThemePanel ) ) );
 
   if( m_buttons.isEmpty() )
     return;

@@ -43,6 +43,12 @@ public:
 
   static QString formatSystemMessage( const ChatMessage&, VNumber last_user_id, bool show_timestamp, bool show_datestamp, bool use_chat_compact );
 
+  // WhatsApp-like rendering (enabled with Settings::chatUseBubbles())
+  static QString bubbleTimeToString( const ChatMessage&, bool show_datestamp );
+  static QString formatBubbleMessage( const User&, const ChatMessage&, VNumber last_user_id, bool show_datestamp,
+                                      bool show_message_group_by_user, bool use_your_name );
+  static QString formatBubbleSystemMessage( const ChatMessage&, bool show_datestamp );
+
 };
 
 #endif // BEEBEEP_GUICHATMESSAGE_H

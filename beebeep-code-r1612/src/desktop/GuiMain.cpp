@@ -94,7 +94,38 @@ GuiMain::GuiMain( QWidget *parent )
   mp_tabMain = new QTabWidget( this );
   mp_tabMain->setObjectName( "GuiTabMain" );
   mp_tabMain->setTabPosition( QTabWidget::South );
-  setCentralWidget( mp_tabMain );
+  mp_mainSplitter = Q_NULLPTR;
+  mp_stackChats = Q_NULLPTR;
+  mp_lblChatPlaceholder = Q_NULLPTR;
+  if( Settings::instance().chatsInMainWindow() )
+  {
+    // WhatsApp desktop like layout: users and chats on the left, the open conversation on the right
+    mp_mainSplitter = new QSplitter( Qt::Horizontal, this );
+    mp_mainSplitter->setObjectName( "GuiMainSplitter" );
+    mp_mainSplitter->setChildrenCollapsible( false );
+    mp_tabMain->setMinimumWidth( 260 );
+    mp_mainSplitter->addWidget( mp_tabMain );
+    mp_stackChats = new QStackedWidget( mp_mainSplitter );
+    mp_stackChats->setObjectName( "GuiChatStack" );
+    mp_stackChats->setMinimumWidth( 360 );
+    mp_lblChatPlaceholder = new QLabel( mp_stackChats );
+    mp_lblChatPlaceholder->setObjectName( "GuiChatPlaceholder" );
+    mp_lblChatPlaceholder->setAlignment( Qt::AlignCenter );
+    mp_lblChatPlaceholder->setWordWrap( true );
+    mp_lblChatPlaceholder->setText( QString( "<p><img src=':/images/beebeep.png' width=96 height=96></p><p style='font-size:18pt'><b>%1</b></p><p style='font-size:11pt'>%2</p>" )
+                                      .arg( Settings::instance().programName(), tr( "Select a user or a chat from the list to start a conversation." ) ) );
+    mp_stackChats->addWidget( mp_lblChatPlaceholder );
+    mp_mainSplitter->addWidget( mp_stackChats );
+    mp_mainSplitter->setStretchFactor( 0, 0 );
+    mp_mainSplitter->setStretchFactor( 1, 1 );
+    QList<int> splitter_sizes;
+    splitter_sizes.append( 330 );
+    splitter_sizes.append( 770 );
+    mp_mainSplitter->setSizes( splitter_sizes );
+    setCentralWidget( mp_mainSplitter );
+  }
+  else
+    setCentralWidget( mp_tabMain );
 
   mp_fileSharing = Q_NULLPTR;
   mp_screenShot = Q_NULLPTR;
@@ -261,7 +292,11 @@ void GuiMain::checkWindowFlagsAndShow()
   if( Settings::instance().resetGeometryAtStartup() || Settings::instance().guiGeometry().isEmpty() )
     resetGeometryAndState();
   else
+  {
     restoreGeometryAndState();
+    if( mp_mainSplitter && width() < 800 )
+      resetGeometryAndState(); // saved geometry comes from the old narrow window
+  }
 
   checkViewActions();
 
@@ -1088,10 +1123,15 @@ void GuiMain::createMenus()
   act->setData( 85 );
   setClearCacheAfterDaysInAction( act );
   mp_menuChatSettings->addSeparator();
+  act = mp_menuChatSettings->addAction( tr( "Show chats inside the main window (restart required)" ), this, SLOT( settingsChanged() ) );
+  act->setCheckable( true );
+  act->setChecked( Settings::instance().chatsInMainWindow() );
+  act->setData( 110 );
   act = mp_menuChatSettings->addAction( tr( "Open chats in a single window" ), this, SLOT( settingsChanged() ) );
   act->setCheckable( true );
   act->setChecked( Settings::instance().showChatsInOneWindow() );
   act->setData( 7 );
+  act->setEnabled( !Settings::instance().chatsInMainWindow() );
   act = mp_menuChatSettings->addAction( tr( "Clear all read messages on closing window" ), this, SLOT( settingsChanged() ) );
   act->setCheckable( true );
   act->setChecked( Settings::instance().chatClearAllReadMessages() );
@@ -1103,6 +1143,10 @@ void GuiMain::createMenus()
 #if defined( BEEBEEP_FOR_RASPBERRY_PI ) || defined( Q_OS_OS2 )
   act->setEnabled( false );
 #endif
+  act = mp_menuChatSettings->addAction( tr( "Show messages in bubbles (modern style)" ), this, SLOT( settingsChanged() ) );
+  act->setCheckable( true );
+  act->setChecked( Settings::instance().chatUseBubbles() );
+  act->setData( 109 );
   act = mp_menuChatSettings->addAction( tr( "Use font emoticons" ), this, SLOT( settingsChanged() ) );
   act->setCheckable( true );
   act->setChecked( Settings::instance().useFontEmoticons() );
@@ -2076,8 +2120,21 @@ void GuiMain::settingsChanged( QAction* act )
         Settings::instance().setUseDarkStyle( act->isChecked() );
         Settings::instance().resetAllColors();
         QTimer::singleShot( 0, this, SLOT( loadStyle() ) );
+        refresh_chat = true; // bubbles colors are written in the html of the messages
       }
+      else
+        act->setChecked( Settings::instance().useDarkStyle() );
     }
+    break;
+  case 109:
+    Settings::instance().setChatUseBubbles( act->isChecked() );
+    refresh_chat = true;
+    break;
+  case 110:
+    Settings::instance().setChatsInMainWindow( act->isChecked() );
+    Settings::instance().setGuiGeometry( QByteArray() );
+    Settings::instance().setGuiState( QByteArray() );
+    QMessageBox::information( this, Settings::instance().programName(), tr( "Please restart %1 to apply the new layout." ).arg( Settings::instance().programName() ), tr( "Ok" ) );
     break;
   case 78:
     Settings::instance().setalwaysShowFileTransferProgress( act->isChecked() );
@@ -2476,6 +2533,9 @@ void GuiMain::onNewChatMessage( const Chat& c, const ChatMessage& cm )
 
   GuiFloatingChat* fl_chat = floatingChat( c.id() );
   bool open_chat_window = Settings::instance().alwaysOpenChatOnNewMessageArrived() || (!cm.isFromLocalUser() && !cm.isFromSystem() && cm.isImportant() && c.isPrivate());
+
+  if( mp_stackChats && !m_floatingChats.isEmpty() && m_floatingChats.first()->guiChat()->chatId() != c.id() )
+    open_chat_window = false; // embedded: do not replace the conversation the user is reading (the list shows the unread messages)
 
   if( !fl_chat && open_chat_window && alert_can_be_notified )
   {
@@ -4221,12 +4281,12 @@ GuiFloatingChat* GuiMain::createFloatingChat( const Chat& c )
   if( fl_chat )
     return fl_chat;
 
-  if( Settings::instance().showChatsInOneWindow() && !m_floatingChats.isEmpty() )
+  if( (mp_stackChats || Settings::instance().showChatsInOneWindow()) && !m_floatingChats.isEmpty() )
     fl_chat = m_floatingChats.first();
 
   if( !fl_chat )
   {
-    fl_chat = new GuiFloatingChat;
+    fl_chat = new GuiFloatingChat( mp_stackChats );
     setupChatConnections( fl_chat->guiChat() );
     connect( fl_chat, SIGNAL( chatIsAboutToClose( VNumber ) ), this, SLOT( removeFloatingChatFromList( VNumber ) ) );
     connect( fl_chat, SIGNAL( readAllMessages( VNumber ) ), this, SLOT( readAllMessagesInChat( VNumber ) ) );
@@ -4238,9 +4298,20 @@ GuiFloatingChat* GuiMain::createFloatingChat( const Chat& c )
 #endif
 
     m_floatingChats.append( fl_chat );
-    fl_chat->setWindowFlagsAndGeometry();
-    fl_chat->setSaveGeometryDisabled( Settings::instance().resetGeometryAtStartup() );
+    if( mp_stackChats )
+    {
+      fl_chat->setEmbedded();
+      mp_stackChats->addWidget( fl_chat );
+    }
+    else
+    {
+      fl_chat->setWindowFlagsAndGeometry();
+      fl_chat->setSaveGeometryDisabled( Settings::instance().resetGeometryAtStartup() );
+    }
   }
+
+  if( mp_stackChats )
+    mp_stackChats->setCurrentWidget( fl_chat );
 
   if( !fl_chat->setChat( c ) )
   {
@@ -4669,6 +4740,27 @@ void GuiMain::resetGeometryAndState()
 {
   if( mp_dockFileTransfers->isVisible() )
     mp_dockFileTransfers->hide();
+
+  if( mp_mainSplitter )
+  {
+    // Big centered window (similar to the account chooser of the web browsers)
+    QRect screen_rect = beeApp->primaryScreen()->availableGeometry();
+    int w = qMax( 800, qMin( 1180, screen_rect.width() - 80 ) );
+    int h = qMax( 560, qMin( 760, screen_rect.height() - 80 ) );
+    resize( w, h );
+    move( screen_rect.x() + qMax( 0, (screen_rect.width() - frameGeometry().width()) / 2 ),
+          screen_rect.y() + qMax( 0, (screen_rect.height() - frameGeometry().height()) / 2 ) );
+    QList<int> splitter_sizes;
+    splitter_sizes.append( qMax( 300, w * 30 / 100 ) );
+    splitter_sizes.append( w - qMax( 300, w * 30 / 100 ) );
+    mp_mainSplitter->setSizes( splitter_sizes );
+    if( !Settings::instance().guiGeometry().isEmpty() )
+      Settings::instance().setGuiGeometry( QByteArray() );
+    if( !Settings::instance().guiState().isEmpty() )
+      Settings::instance().setGuiState( QByteArray() );
+    return;
+  }
+
   resize( qMax( width(), 280 ), qMin( 520, qMax( beeApp->primaryScreen()->availableGeometry().height() - 120, 460 ) ) );
 
 #ifdef Q_OS_WIN
@@ -5364,9 +5456,16 @@ void GuiMain::loadStyle()
   }
   else
   {
-    qDebug() << "Stylesheet:" << (m_useFusionStyle ? "Fusion" : "System Default" );
-    beeApp->resetPalette();
+    qDebug() << "Stylesheet:" << (m_useFusionStyle ? "Fusion" : "System Default" ) << "Light";
+    if( m_useFusionStyle )
+      beeApp->setPalette( Bee::lightPalette() );
+    else
+      beeApp->resetPalette();
   }
+
+  // Modern look (flat toolbars, rounded inputs, thin scrollbars, WhatsApp-like composer)
+  if( m_useFusionStyle )
+    beeApp->setStyleSheet( Bee::themeStyleSheet() );
 
   setMinimumWidthForStyle();
 

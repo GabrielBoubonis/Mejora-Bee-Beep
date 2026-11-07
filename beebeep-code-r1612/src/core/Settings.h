@@ -635,6 +635,11 @@ public:
 
   inline void setUseDarkStyle( bool );
   inline bool useDarkStyle() const;
+  inline void setChatUseBubbles( bool );
+  inline void setChatsInMainWindow( bool );
+  inline bool chatsInMainWindow() const;
+  inline bool chatUseBubbles() const;
+  inline int currentThemeVersion() const { return 1; }
 
   QString defaultListBackgroundColor() const;
   QString defaultSystemBackgroundColor() const;
@@ -1006,6 +1011,9 @@ private:
   bool m_hideEmptyChatsInList;
 
   bool m_useDarkStyle;
+  bool m_chatUseBubbles;
+  bool m_chatsInMainWindow;
+  int m_themeVersion;
 
   QDateTime m_saveMessagesTimestamp;
 
@@ -1407,6 +1415,10 @@ inline void Settings::setBroadcastToLocalSubnetAlways( bool new_value ) { m_broa
 inline bool Settings::broadcastToLocalSubnetAlways() const { return m_broadcastToLocalSubnetAlways; }
 inline void Settings::setUseDarkStyle( bool new_value ) { m_useDarkStyle = new_value; }
 inline bool Settings::useDarkStyle() const { return m_useDarkStyle; }
+inline void Settings::setChatUseBubbles( bool new_value ) { m_chatUseBubbles = new_value; }
+inline bool Settings::chatUseBubbles() const { return m_chatUseBubbles; }
+inline void Settings::setChatsInMainWindow( bool new_value ) { m_chatsInMainWindow = new_value; }
+inline bool Settings::chatsInMainWindow() const { return m_chatsInMainWindow; }
 inline void Settings::setSaveMessagesTimestamp( const QDateTime& new_value ) { m_saveMessagesTimestamp = new_value; }
 inline const QDateTime& Settings::saveMessagesTimestamp() const { return m_saveMessagesTimestamp; }
 inline bool Settings::chatSaveFileTransfers() const { return m_chatSaveFileTransfers; }

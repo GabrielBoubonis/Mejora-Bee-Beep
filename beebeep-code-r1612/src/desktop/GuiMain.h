@@ -286,6 +286,9 @@ private:
 
 private:
   QTabWidget* mp_tabMain;
+  QSplitter* mp_mainSplitter;
+  QStackedWidget* mp_stackChats;
+  QLabel* mp_lblChatPlaceholder;
   GuiFileTransfer* mp_fileTransfer;
   GuiUserList* mp_userList;
   GuiChatList* mp_chatList;

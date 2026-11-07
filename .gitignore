@@ -1,0 +1,4 @@
+build/
+dist/
+beebeep-code-r1612/test/
+*.log

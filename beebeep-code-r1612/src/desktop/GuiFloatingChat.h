@@ -56,6 +56,10 @@ public:
 
   inline void setSaveGeometryDisabled( bool );
 
+  // Embedded mode: the chat is shown on the right side of the main window (WhatsApp desktop like)
+  void setEmbedded();
+  inline bool isEmbedded() const;
+
 public slots:
   void showUp();
   void raiseOnTop();
@@ -104,6 +108,11 @@ private:
   QAction* mp_actGroupMenu;
   QAction* mp_actSaveWindowGeometry;
 
+  bool m_isEmbedded;
+  QToolBar* mp_barTitle;
+  QLabel* mp_lblTitleIcon;
+  QLabel* mp_lblTitle;
+
 };
 
 // Inline Functions
@@ -111,5 +120,6 @@ inline GuiChat* GuiFloatingChat::guiChat() const { return mp_chat; }
 inline bool GuiFloatingChat::chatIsVisible() const { return m_chatIsVisible; }
 inline void GuiFloatingChat::setChatToolbarVisible( bool new_value ) { mp_barChat->setVisible( new_value ); }
 inline void GuiFloatingChat::setSaveGeometryDisabled( bool new_value ) { mp_actSaveWindowGeometry->setDisabled( new_value ); }
+inline bool GuiFloatingChat::isEmbedded() const { return m_isEmbedded; }
 
 #endif // BEEBEEP_GUIFLOATINGCHAT_H

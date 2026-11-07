@@ -44,6 +44,10 @@ GuiFloatingChat::GuiFloatingChat( QWidget *parent )
  : QMainWindow( parent )
 {
   setObjectName( "GuiFloatingChat" );
+  m_isEmbedded = false;
+  mp_barTitle = Q_NULLPTR;
+  mp_lblTitleIcon = Q_NULLPTR;
+  mp_lblTitle = Q_NULLPTR;
   m_mainWindowIcon = IconManager::instance().icon( "chat.png" );
   setMainIcon( false );
   mp_chat = new GuiChat( this );
@@ -165,6 +169,52 @@ void GuiFloatingChat::updateChatTitle( const Chat& c )
 
   setMainIcon( c.unreadMessages() > 0 );
   setWindowTitle( QString( "%1 - %2 %3" ).arg( chat_title, Settings::instance().programName(), Settings::instance().version( false, false, false ) ) );
+
+  if( mp_lblTitle )
+  {
+    mp_lblTitle->setText( chat_title );
+    mp_lblTitleIcon->setPixmap( m_mainWindowIcon.pixmap( 36, 36 ) );
+  }
+}
+
+void GuiFloatingChat::setEmbedded()
+{
+  if( m_isEmbedded )
+    return;
+  m_isEmbedded = true;
+  setWindowFlags( Qt::Widget );
+  setObjectName( "GuiEmbeddedChat" );
+
+  // Header with avatar and name of the conversation, as in the desktop chat apps
+  mp_barTitle = new QToolBar( tr( "Chat title" ), this );
+  mp_barTitle->setObjectName( "GuiEmbeddedChatTitleBar" );
+  mp_barTitle->setMovable( false );
+  mp_barTitle->setFloatable( false );
+  mp_barTitle->toggleViewAction()->setVisible( false );
+  mp_lblTitleIcon = new QLabel( mp_barTitle );
+  mp_lblTitleIcon->setFixedSize( 40, 40 );
+  mp_lblTitleIcon->setAlignment( Qt::AlignCenter );
+  mp_lblTitle = new QLabel( mp_barTitle );
+  mp_lblTitle->setObjectName( "GuiEmbeddedChatTitle" );
+  QFont title_font = mp_lblTitle->font();
+  title_font.setPointSize( title_font.pointSize() + 3 );
+  title_font.setBold( true );
+  mp_lblTitle->setFont( title_font );
+  mp_lblTitle->setTextFormat( Qt::PlainText );
+  mp_lblTitle->setContentsMargins( 6, 0, 6, 0 );
+  mp_barTitle->addWidget( mp_lblTitleIcon );
+  mp_barTitle->addWidget( mp_lblTitle );
+  addToolBar( Qt::TopToolBarArea, mp_barTitle );
+
+  // Geometry is managed by the main window
+  mp_actSaveWindowGeometry->setVisible( false );
+  mp_dockPresetMessageList->hide();
+  mp_dockEmoticons->setVisible( Settings::instance().showEmoticonMenu() );
+  QSplitter* chat_splitter = mp_chat->chatSplitter();
+  QList<int> splitter_size_list;
+  splitter_size_list.append( 500 );
+  splitter_size_list.append( 90 );
+  chat_splitter->setSizes( splitter_size_list );
 }
 
 void GuiFloatingChat::updateChatMember( const Chat& c, const User& u )
@@ -286,7 +336,7 @@ void GuiFloatingChat::closeEvent( QCloseEvent* e )
   if( beeCore->voicePlayer()->chatId() == mp_chat->chatId() && beeCore->voicePlayer()->isPlaying() )
     beeCore->voicePlayer()->stop();
 #endif
-  if( Settings::instance().floatingChatState().isEmpty() )
+  if( m_isEmbedded || Settings::instance().floatingChatState().isEmpty() )
     Settings::instance().setShowEmoticonMenu( mp_dockEmoticons->isVisible() );
   QMainWindow::closeEvent( e );
   emit chatIsAboutToClose( mp_chat->chatId() );
@@ -330,13 +380,19 @@ void GuiFloatingChat::setWindowFlagsAndGeometry()
 
 void GuiFloatingChat::showUp()
 {
-  Bee::showUp( this );
+  if( m_isEmbedded )
+  {
+    show();
+    Bee::showUp( window() );
+  }
+  else
+    Bee::showUp( this );
   mp_chat->ensureLastMessageVisible();
 }
 
 void GuiFloatingChat::raiseOnTop()
 {
-  Bee::raiseOnTop( this );
+  Bee::raiseOnTop( m_isEmbedded ? window() : this );
 }
 
 void GuiFloatingChat::setFocusInChat()
@@ -429,6 +485,13 @@ void GuiFloatingChat::saveGeometryAndState()
 
 void GuiFloatingChat::keyPressEvent( QKeyEvent* e )
 {
+  if( e->key() == Qt::Key_Escape && m_isEmbedded )
+  {
+    // let the main window handle it
+    e->ignore();
+    return;
+  }
+
   if( e->key() == Qt::Key_Escape )
   {
     if( Settings::instance().keyEscapeMinimizeInTray() )

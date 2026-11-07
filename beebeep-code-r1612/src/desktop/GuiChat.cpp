@@ -83,6 +83,9 @@ GuiChat::GuiChat( QWidget *parent )
   mp_teMessage->setObjectName( "GuiMessageEdit" );
 
   mp_teChat->setObjectName( "GuiChatViewer" );
+  mp_pbSend->setIconSize( QSize( 22, 22 ) );
+  mp_pbSend->setFlat( false );
+  mp_pbSend->setCursor( Qt::PointingHandCursor );
   m_defaultChatPalette = mp_teChat->palette();
   m_defaultChatPalette.setColor( QPalette::Highlight, Qt::yellow );
   m_defaultChatPalette.setColor( QPalette::HighlightedText, Qt::black );
@@ -541,10 +544,16 @@ QString GuiChat::chatMessageToText( const ChatMessage& cm )
       qWarning() << "User" << cm.userId() << "not found for message:" << qPrintable( cm.message() );
       return "";
     }
-    s = GuiChatMessage::formatMessage( u, cm, m_lastMessageUserId, Settings::instance().chatShowMessageTimestamp(), Settings::instance().chatShowMessageDatestamp(), false,
-                                       Settings::instance().showMessagesGroupByUser(), m_chatId == ID_DEFAULT_CHAT ? true : Settings::instance().chatUseYourNameInsteadOfYou(),
-                                       Settings::instance().chatCompact() );
+    if( Settings::instance().chatUseBubbles() )
+      s = GuiChatMessage::formatBubbleMessage( u, cm, m_lastMessageUserId, Settings::instance().chatShowMessageDatestamp(),
+                                               Settings::instance().showMessagesGroupByUser(), m_chatId == ID_DEFAULT_CHAT ? true : Settings::instance().chatUseYourNameInsteadOfYou() );
+    else
+      s = GuiChatMessage::formatMessage( u, cm, m_lastMessageUserId, Settings::instance().chatShowMessageTimestamp(), Settings::instance().chatShowMessageDatestamp(), false,
+                                         Settings::instance().showMessagesGroupByUser(), m_chatId == ID_DEFAULT_CHAT ? true : Settings::instance().chatUseYourNameInsteadOfYou(),
+                                         Settings::instance().chatCompact() );
   }
+  else if( Settings::instance().chatUseBubbles() )
+    s = GuiChatMessage::formatBubbleSystemMessage( cm, Settings::instance().chatShowMessageDatestamp() );
   else
     s = GuiChatMessage::formatSystemMessage( cm, m_lastMessageUserId, Settings::instance().chatShowMessageTimestamp(), Settings::instance().chatShowMessageDatestamp(), Settings::instance().chatCompact() );
 
@@ -738,6 +747,19 @@ bool GuiChat::appendChatMessage( const Chat& c, const ChatMessage& cm )
     mp_teChat->setUpdatesEnabled( false );
     QTextCursor cursor( mp_teChat->textCursor() );
     cursor.movePosition( QTextCursor::End );
+    if( Settings::instance().chatUseBubbles() && cursor.block().text().isEmpty() )
+    {
+      // The empty block that Qt leaves after a table would add a full text line between two bubbles
+      QTextBlockFormat block_format = cursor.blockFormat();
+      block_format.setTopMargin( 0 );
+      block_format.setBottomMargin( 0 );
+      block_format.setLineHeight( 1, QTextBlockFormat::FixedHeight );
+      cursor.setBlockFormat( block_format );
+      QTextCharFormat char_format;
+      char_format.setFontPointSize( 1 );
+      cursor.setBlockCharFormat( char_format );
+      cursor.setCharFormat( char_format );
+    }
     cursor.insertHtml( text_message );
     mp_teChat->setUpdatesEnabled( updates_enabled );
 #ifdef BEEBEEP_DEBUG
@@ -779,7 +801,8 @@ void GuiChat::updateChatColors()
   QString background_color = m_chatId == ID_DEFAULT_CHAT ? Settings::instance().defaultChatBackgroundColor() : Settings::instance().chatBackgroundColor();
   QString text_color = Settings::instance().chatFontColor() != Settings::instance().chatDefaultTextColor() ? Settings::instance().chatFontColor(): Settings::instance().chatDefaultTextColor();
   mp_teMessage->setTextColor( text_color );
-  mp_teMessage->setStyleSheet( QString( "#GuiMessageEdit { background-color: %1; color: %2; }" ).arg( background_color, text_color ) );
+  // The message editor uses the input color of the theme (rounded box on a panel, like mobile chat apps)
+  mp_teMessage->setStyleSheet( QString( "#GuiMessageEdit { background-color: %1; color: %2; }" ).arg( Bee::themeColor( Bee::ThemeInput ), text_color ) );
   mp_teChat->setStyleSheet( QString( "#GuiChatViewer { background-color: %1; color: %2; }" ).arg( background_color, Settings::instance().chatDefaultTextColor() ) );
   // No css for bee-quote because stylesheet is only applied to new inserted HTML
 }

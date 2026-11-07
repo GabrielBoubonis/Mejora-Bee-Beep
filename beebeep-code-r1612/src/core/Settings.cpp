@@ -231,6 +231,9 @@ Settings::Settings()
 
   m_useMessageTimestampWithAP = false;
   m_useDarkStyle = false;
+  m_chatUseBubbles = true;
+  m_chatsInMainWindow = true;
+  m_themeVersion = 0;
 
   m_saveMessagesTimestamp = QDateTime::currentDateTime();
 
@@ -332,29 +335,29 @@ void Settings::setDefaultFolders()
 
 QString Settings::defaultListBackgroundColor() const
 {
-  return m_useDarkStyle ? Bee::colorDarkGrey().name() : QLatin1String( "#ffffff" );
+  return Bee::themeColor( Bee::ThemePanel, m_useDarkStyle );
 }
 
 QString Settings::defaultSystemBackgroundColor() const
 {
-  return m_useDarkStyle ? Bee::colorBlack().name() : QLatin1String( "#e0e0e0" );
+  return Bee::themeColor( Bee::ThemeChatBackground, m_useDarkStyle );
 }
 
 void Settings::resetAllColors()
 {
-  m_chatDefaultUserNameColor = m_useDarkStyle ? "#ffffff" : "#000000";
+  m_chatDefaultUserNameColor = Bee::themeColor( Bee::ThemeText, m_useDarkStyle );
   m_homeBackgroundColor = defaultSystemBackgroundColor();
   m_defaultChatBackgroundColor = defaultSystemBackgroundColor();
   m_userListBackgroundColor = defaultListBackgroundColor();
   m_chatListBackgroundColor = defaultListBackgroundColor();
   m_groupListBackgroundColor = defaultListBackgroundColor();
   m_savedChatListBackgroundColor = defaultListBackgroundColor();
-  m_chatFontColor = m_useDarkStyle ? "#ffffff" : "#000000";
-  m_chatBackgroundColor = m_useDarkStyle ? Bee::colorDarkGrey().name() : "#ffffff";
-  m_chatDefaultTextColor = m_useDarkStyle ? "#ffffff" : "#000000";
-  m_chatSystemTextColor = m_useDarkStyle ? Bee::colorGrey().name() : "#555555";
-  m_chatQuoteBackgroundColor = Bee::colorGrey().name();
-  m_chatQuoteTextColor = Bee::colorBlack().name();
+  m_chatFontColor = Bee::themeColor( Bee::ThemeText, m_useDarkStyle );
+  m_chatBackgroundColor = Bee::themeColor( Bee::ThemeChatBackground, m_useDarkStyle );
+  m_chatDefaultTextColor = Bee::themeColor( Bee::ThemeText, m_useDarkStyle );
+  m_chatSystemTextColor = Bee::themeColor( Bee::ThemeSystemText, m_useDarkStyle );
+  m_chatQuoteBackgroundColor = Bee::themeColor( Bee::ThemeSelection, m_useDarkStyle );
+  m_chatQuoteTextColor = Bee::themeColor( Bee::ThemeText, m_useDarkStyle );
 }
 
 void Settings::createApplicationUuid()
@@ -1535,6 +1538,16 @@ void Settings::loadCommonSettings( QSettings* user_ini )
   m_hideEmptyChatsInList = commonValue( system_rc, user_ini, "HideEmptyChatsInList", m_hideEmptyChatsInList ).toBool();
   m_enableMaximizeButton = commonValue( system_rc, user_ini, "EnableMaximizeButton", false ).toBool();
   m_useDarkStyle = user_ini->value( "UseDarkStyle", m_useDarkStyle ).toBool();
+  m_chatUseBubbles = commonValue( system_rc, user_ini, "UseChatBubbles", m_chatUseBubbles ).toBool();
+  m_chatsInMainWindow = commonValue( system_rc, user_ini, "ChatsInMainWindow", m_chatsInMainWindow ).toBool();
+  m_themeVersion = user_ini->value( "ThemeVersion", 0 ).toInt();
+  if( m_themeVersion < currentThemeVersion() )
+  {
+    // First start with the modern (WhatsApp-like) theme: replace the old default colors
+    qDebug() << "Applying the modern theme colors (theme version" << currentThemeVersion() << ")";
+    resetAllColors();
+    m_themeVersion = currentThemeVersion();
+  }
   m_showUsersInWorkgroups = commonValue( system_rc, user_ini, "ShowUsersInWorkgroups", false ).toBool();
   m_openChatWhenSendNewMessage = user_ini->value( "OpenChatWhenSendNewMessage", true ).toBool();
   m_sendNewMessageIndividually = user_ini->value( "SendNewMessageIndividually", false ).toBool();
@@ -1925,6 +1938,9 @@ void Settings::save()
   sets->setValue( "HideEmptyChatsInList", m_hideEmptyChatsInList );
   sets->setValue( "EnableMaximizeButton", m_enableMaximizeButton );
   sets->setValue( "UseDarkStyle", m_useDarkStyle );
+  sets->setValue( "UseChatBubbles", m_chatUseBubbles );
+  sets->setValue( "ChatsInMainWindow", m_chatsInMainWindow );
+  sets->setValue( "ThemeVersion", m_themeVersion );
   sets->setValue( "ShowUsersInWorkgroups", m_showUsersInWorkgroups );
   sets->setValue( "OpenChatWhenSendNewMessage", m_openChatWhenSendNewMessage );
   sets->setValue( "SendNewMessageIndividually", m_sendNewMessageIndividually );

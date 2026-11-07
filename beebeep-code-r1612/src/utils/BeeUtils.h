@@ -94,6 +94,16 @@ namespace Bee
   bool areStringListEqual( const QStringList&, const QStringList&, Qt::CaseSensitivity cs = Qt::CaseInsensitive );
   QString dateTimeToString( const QDateTime& );
   QPalette darkPalette();
+  QPalette lightPalette();
+
+  // Modern chat theme (WhatsApp-like). Colors depend on Settings::useDarkStyle()
+  enum ThemeColor { ThemeWindow, ThemePanel, ThemeInput, ThemeText, ThemeMutedText, ThemeAccent, ThemeAccentHover,
+                    ThemeChatBackground, ThemeBubbleOut, ThemeBubbleIn, ThemeBubbleText, ThemeBubbleMeta,
+                    ThemeSystemPill, ThemeSystemText, ThemeBorder, ThemeSelection, ThemeLink, NumThemeColors };
+  QString themeColor( ThemeColor, bool dark_style );
+  QString themeColor( ThemeColor );
+  QString themeStyleSheet();
+
   QColor colorDarkGrey();
   QColor colorGrey();
   QColor colorBlack();

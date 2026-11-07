@@ -2251,6 +2251,11 @@ Por favor, elija un nombre diferente.</translation>
 <context>
     <name>GuiFloatingChat</name>
     <message>
+        <location filename="../src/desktop/GuiFloatingChat.cpp" line="180"/>
+        <source>Chat title</source>
+        <translation>Título del chat</translation>
+    </message>
+    <message>
         <source>Show group menu</source>
         <translation type="obsolete">Mostrar menú de grupo</translation>
     </message>
@@ -3458,6 +3463,26 @@ Por favor, elija un nombre diferente.</translation>
         <location filename="../src/desktop/GuiMain.cpp" line="892"/>
         <source>Use the dark theme</source>
         <translation>Utilizar el tema oscuro</translation>
+    </message>
+    <message>
+        <location filename="../src/desktop/GuiMain.cpp" line="1106"/>
+        <source>Show messages in bubbles (modern style)</source>
+        <translation>Mostrar los mensajes en burbujas (estilo moderno)</translation>
+    </message>
+    <message>
+        <location filename="../src/desktop/GuiMain.cpp" line="100"/>
+        <source>Show chats inside the main window (restart required)</source>
+        <translation>Mostrar los chats dentro de la ventana principal (requiere reiniciar)</translation>
+    </message>
+    <message>
+        <location filename="../src/desktop/GuiMain.cpp" line="100"/>
+        <source>Select a user or a chat from the list to start a conversation.</source>
+        <translation>Selecciona un usuario o un chat de la lista para empezar a conversar.</translation>
+    </message>
+    <message>
+        <location filename="../src/desktop/GuiMain.cpp" line="100"/>
+        <source>Please restart %1 to apply the new layout.</source>
+        <translation>Reinicia %1 para aplicar el nuevo diseño.</translation>
     </message>
     <message>
         <location filename="../src/desktop/GuiMain.cpp" line="913"/>
