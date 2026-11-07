@@ -24,6 +24,7 @@
 #include "BeeUtils.h"
 #include "ChatManager.h"
 #include "FileDialog.h"
+#include "GuiChatBubblePainter.h"
 #include "GuiChatItem.h"
 #include "GuiSavedChat.h"
 #include "IconManager.h"
@@ -39,6 +40,7 @@ GuiSavedChat::GuiSavedChat( QWidget* parent )
   setWindowIcon( IconManager::instance().icon( "saved-chat.png" ) );
 
   mp_teSavedChat = new QTextBrowser( this );
+  GuiChatBubblePainter::install( mp_teSavedChat );
   mp_teSavedChat->setToolTip( tr( "Right click to open menu" ) );
   QPalette p = mp_teSavedChat->palette();
   p.setColor( QPalette::Highlight, Qt::yellow );

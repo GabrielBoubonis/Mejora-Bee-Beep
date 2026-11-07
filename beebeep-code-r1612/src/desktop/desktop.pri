@@ -7,6 +7,7 @@ HEADERS += desktop/BeeApplication.h \
   desktop/GuiChat.h \
   desktop/GuiChatItem.h \
   desktop/GuiChatList.h \
+  desktop/GuiChatBubblePainter.h \
   desktop/GuiChatMessage.h \
   desktop/GuiCreateGroup.h \
   desktop/GuiCreateMessage.h \
@@ -57,6 +58,7 @@ SOURCES +=  desktop/BeeApplication.cpp \
   desktop/GuiChat.cpp \
   desktop/GuiChatItem.cpp \
   desktop/GuiChatList.cpp \
+  desktop/GuiChatBubblePainter.cpp \
   desktop/GuiChatMessage.cpp \
   desktop/GuiCreateGroup.cpp \
   desktop/GuiCreateMessage.cpp \

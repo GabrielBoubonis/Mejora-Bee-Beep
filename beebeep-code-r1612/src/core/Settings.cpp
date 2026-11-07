@@ -156,7 +156,7 @@ Settings::Settings()
   /* Default RC end */
 
   m_emoticonSizeInEdit = 16;
-  setChatFont( QApplication::font(), true );
+  setChatFont( defaultChatFont(), true );
   m_emoticonSizeInMenu = 24;
   m_emoticonInRecentMenu = 48;
   m_confirmOnDownloadFile = false;
@@ -392,6 +392,15 @@ QNetworkProxy Settings::systemNetworkProxy( const QNetworkProxyQuery& npq ) cons
     return QNetworkProxy( QNetworkProxy::NoProxy );
   else
     return proxy_list.first();
+}
+
+QFont Settings::defaultChatFont() const
+{
+  // Chat text a little bigger than the interface, as in the modern chat apps
+  QFont f = QApplication::font();
+  if( f.pointSize() > 0 )
+    f.setPointSize( f.pointSize() + 2 );
+  return f;
 }
 
 void Settings::setChatFont( const QFont& new_value, bool resize_emoticon_size_in_chat )
@@ -1368,7 +1377,7 @@ void Settings::loadCommonSettings( QSettings* user_ini )
       qWarning() << "Invalid font string found in ChatFont setting value:" << chat_font_string;
   }
   else
-    setChatFont( QApplication::font(), false );
+    setChatFont( defaultChatFont(), false );
   m_chatFontColor = commonValue( system_rc, user_ini, "FontColor", QColor( Qt::black ).name() ).toString();
   m_defaultChatBackgroundColor = commonValue( system_rc, user_ini, "DefaultChatBackgroundColor", m_defaultChatBackgroundColor ).toString();
   m_chatCompact = commonValue( system_rc, user_ini, "CompactMessage", true ).toBool();
@@ -1543,9 +1552,11 @@ void Settings::loadCommonSettings( QSettings* user_ini )
   m_themeVersion = user_ini->value( "ThemeVersion", 0 ).toInt();
   if( m_themeVersion < currentThemeVersion() )
   {
-    // First start with the modern (WhatsApp-like) theme: replace the old default colors
-    qDebug() << "Applying the modern theme colors (theme version" << currentThemeVersion() << ")";
-    resetAllColors();
+    qDebug() << "Applying the modern theme (from version" << m_themeVersion << "to" << currentThemeVersion() << ")";
+    if( m_themeVersion < 1 )
+      resetAllColors(); // first start with the modern (WhatsApp-like) colors
+    if( m_themeVersion < 2 )
+      setChatFont( defaultChatFont(), true ); // bigger and modern font in the chat bubbles
     m_themeVersion = currentThemeVersion();
   }
   m_showUsersInWorkgroups = commonValue( system_rc, user_ini, "ShowUsersInWorkgroups", false ).toBool();

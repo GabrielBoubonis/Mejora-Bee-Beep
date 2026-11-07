@@ -1821,7 +1821,7 @@ void GuiMain::settingsChanged( QAction* act )
     break;
   case 23:
     {
-      Settings::instance().setChatFont( QApplication::font(), false );
+      Settings::instance().setChatFont( Settings::instance().defaultChatFont(), false );
       updateChatFont();
     }
     break;

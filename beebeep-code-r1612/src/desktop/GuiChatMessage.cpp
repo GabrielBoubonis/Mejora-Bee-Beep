@@ -225,6 +225,21 @@ QString GuiChatMessage::formatBubbleMessage( const User& u, const ChatMessage& c
       text_color = cm.textColor().name();
   }
 
+  bool dark_style = Settings::instance().useDarkStyle();
+  QColor bubble_color( Bee::themeColor( is_outgoing ? Bee::ThemeBubbleOut : Bee::ThemeBubbleIn ) );
+
+  // Quotes ([quote]...[/quote]) become a block with a colored bar on the left, as in the modern chat apps
+  QString quote_open = QString( "<table border=0 cellspacing=0 cellpadding=0 width=\"100%\" style=\"margin-top:2px; margin-bottom:6px;\">"
+                                "<tr><td width=4 bgcolor=\"%1\"></td><td bgcolor=\"%2\" style=\"padding:6px 8px;\"><font color=%3 size=2>" )
+                         .arg( QLatin1String( "#d4a72c" ),
+                               bubble_color.darker( dark_style ? 125 : 106 ).name(),
+                               Bee::themeColor( dark_style ? Bee::ThemeBubbleMeta : Bee::ThemeSystemText ) );
+  QLatin1String quote_close( "</font></td></tr></table>" );
+  text_formatted.replace( QLatin1String( "<br /><span class='bee-quote'>&nbsp;&nbsp;<i>" ), quote_open );
+  text_formatted.replace( QLatin1String( "<span class='bee-quote'>&nbsp;&nbsp;<i>" ), quote_open );
+  text_formatted.replace( QLatin1String( "</i>&nbsp;&nbsp;</span> " ), quote_close );
+  text_formatted.replace( QLatin1String( "</i>&nbsp;&nbsp;</span>" ), quote_close );
+
   QString html_body;
   if( cm.isImportant() )
     html_body += textImportantPrefix();
@@ -232,40 +247,54 @@ QString GuiChatMessage::formatBubbleMessage( const User& u, const ChatMessage& c
 
   // Sender name (only for the messages of the others, as in mobile chat apps)
   QString html_user_name;
+  QString user_name_to_show;
+  QString name_color = Bee::themeColor( Bee::ThemeLink );
   if( !is_outgoing && !append_message_to_previous )
   {
-    QString user_name = u.isValid() ? Bee::userNameToShow( u, true ) : QObject::tr( "Unknown" );
+    user_name_to_show = u.isValid() ? Bee::userNameToShow( u, true ) : QObject::tr( "Unknown" );
     if( cm.isFromAutoresponder() )
-      user_name = QString( "%1 from %2" ).arg( Settings::instance().autoresponderName(), user_name );
-    QString name_color = Bee::themeColor( Bee::ThemeAccent );
-    if( Settings::instance().chatUseColoredUserNames() && QColor( u.color() ).isValid() && !Bee::isColorNear( QColor( u.color() ), QColor( Bee::themeColor( Bee::ThemeBubbleIn ) ) ) )
-      name_color = u.color();
-    html_user_name = QString( "<font color=%1><b>%2</b></font><br />" ).arg( name_color, user_name );
+      user_name_to_show = QString( "%1 from %2" ).arg( Settings::instance().autoresponderName(), user_name_to_show );
+    QColor user_color( u.color() );
+    if( Settings::instance().chatUseColoredUserNames() && user_color.isValid() && !Bee::isColorNear( user_color, bubble_color ) )
+    {
+      // keep the name readable on the bubble
+      if( dark_style && user_color.lightness() < 110 )
+        user_color = user_color.lighter( 160 );
+      else if( !dark_style && user_color.lightness() > 150 )
+        user_color = user_color.darker( 160 );
+      name_color = user_color.name();
+    }
   }
   else if( is_outgoing && cm.isFromAutoresponder() )
   {
-    html_user_name = QString( "<font color=%1><b>%2</b></font><br />" ).arg( Bee::themeColor( Bee::ThemeAccent ), Settings::instance().autoresponderName() );
+    user_name_to_show = Settings::instance().autoresponderName();
+    name_color = Bee::themeColor( Bee::ThemeAccent );
   }
+  if( !user_name_to_show.isEmpty() )
+    html_user_name = QString( "<p style=\"margin-top:0px; margin-bottom:3px;\"><font color=%1 size=2><span style=\"font-weight:600;\">%2</span></font></p>" )
+                       .arg( name_color, user_name_to_show );
   Q_UNUSED( use_your_name );
 
-  QString html_time = QString( "<p align=right style=\"margin-top:2px; margin-bottom:0px;\"><font color=%1 size=2>%2</font></p>" )
+  QString html_time = QString( "<p align=right style=\"margin-top:3px; margin-bottom:0px;\"><font color=%1 size=2>%2</font></p>" )
                         .arg( Bee::themeColor( Bee::ThemeBubbleMeta ), bubbleTimeToString( cm, show_datestamp ) );
 
   bool align_right = is_outgoing;
   if( Settings::instance().showTextInModeRTL() )
     align_right = !align_right;
 
-  QString html_message = QString( "<table align=%1 border=0 cellspacing=0 cellpadding=7 bgcolor=\"%2\" style=\"margin-top:0px; margin-bottom:0px; margin-%3:56px; margin-%4:6px;\">"
-                                  "<tr><td>%5%6%7</td></tr></table>" )
-                           .arg( align_right ? QLatin1String( "right" ) : QLatin1String( "left" ),
-                                 Bee::themeColor( is_outgoing ? Bee::ThemeBubbleOut : Bee::ThemeBubbleIn ),
-                                 align_right ? QLatin1String( "left" ) : QLatin1String( "right" ),
-                                 align_right ? QLatin1String( "right" ) : QLatin1String( "left" ),
-                                 html_user_name, html_body, html_time );
+  // The bubble color is stored as (invisible) border color: GuiChat paints the rounded bubble behind the table.
+  // With bubbles disabled in the viewer (saved chats, print) the table is shown without background.
+  // The gap is the top margin of the table (bigger when the sender changes):
+  // the spacer block before it may be merged with the last block of the chat when the message is appended
+  QString html_table_open = QString( "<table align=%1 border=0 cellspacing=0 cellpadding=10 style=\"border-color:%2; margin-top:%3px; margin-bottom:0px; margin-%4:70px; margin-%5:8px;\">" )
+                              .arg( align_right ? QLatin1String( "right" ) : QLatin1String( "left" ),
+                                    bubble_color.name(),
+                                    QString::number( append_message_to_previous ? 3 : 12 ),
+                                    align_right ? QLatin1String( "left" ) : QLatin1String( "right" ),
+                                    align_right ? QLatin1String( "right" ) : QLatin1String( "left" ) );
 
-  // Bigger gap when the sender changes, tiny gap for consecutive messages of the same user
-  html_message.prepend( bubbleSpacer( append_message_to_previous ? 2 : 10 ) );
-  return html_message;
+  // Concatenation (not QString::arg) because the message text may contain "%1"-like sequences
+  return bubbleSpacer( 0 ) + html_table_open + QLatin1String( "<tr><td>" ) + html_user_name + html_body + html_time + QLatin1String( "</td></tr></table>" );
 }
 
 QString GuiChatMessage::formatBubbleSystemMessage( const ChatMessage& cm, bool show_datestamp )

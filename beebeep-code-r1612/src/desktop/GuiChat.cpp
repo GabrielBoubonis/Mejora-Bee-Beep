@@ -27,6 +27,7 @@
 #include "Core.h"
 #include "FileDialog.h"
 #include "GuiChat.h"
+#include "GuiChatBubblePainter.h"
 #include "GuiChatMessage.h"
 #include "GuiCreateTextFile.h"
 #ifdef BEEBEEP_USE_VOICE_CHAT
@@ -83,6 +84,7 @@ GuiChat::GuiChat( QWidget *parent )
   mp_teMessage->setObjectName( "GuiMessageEdit" );
 
   mp_teChat->setObjectName( "GuiChatViewer" );
+  GuiChatBubblePainter::install( mp_teChat );
   mp_pbSend->setIconSize( QSize( 22, 22 ) );
   mp_pbSend->setFlat( false );
   mp_pbSend->setCursor( Qt::PointingHandCursor );
@@ -779,7 +781,7 @@ void GuiChat::setChatFont( const QFont& f )
   mp_teChat->setFont( f );
   mp_teMessage->setFont( f );
   mp_teMessage->update();
-  mp_actRestoreDefaultFont->setEnabled( f != QApplication::font() );
+  mp_actRestoreDefaultFont->setEnabled( f != Settings::instance().defaultChatFont() );
 }
 
 void GuiChat::selectFont()
@@ -1384,7 +1386,7 @@ void GuiChat::resetChatFontToDefault()
 {
   if( QMessageBox::question( this, Settings::instance().programName(), tr( "Do you want to restore the default font?" ), tr( "Yes" ), tr( "No" ), QString(), 0, 1 ) == 1 )
     return;
-  Settings::instance().setChatFont( QApplication::font(), false );
+  Settings::instance().setChatFont( Settings::instance().defaultChatFont(), false );
   setChatFont( Settings::instance().chatFont() );
 }
 

@@ -1437,9 +1437,9 @@ QString Bee::themeStyleSheet()
   css += QString( "QTreeView::item:selected, QListView::item:selected { background-color: %1; color: %2; }" ).arg( selection, text );
 
   // Chat window: the conversation area and the WhatsApp-like composer bar
-  css += QString( "#GuiChatViewer { border: none; padding: 6px; }" );
+  css += QString( "#GuiChatViewer { border: none; padding: 10px 12px; }" );
   css += QString( "#mp_frameMessage { background-color: %1; border-top: 1px solid %2; }" ).arg( panel, border );
-  css += QString( "#GuiMessageEdit { border: 1px solid %1; border-radius: 10px; padding: 6px 8px; selection-background-color: %2; }" ).arg( border, accent );
+  css += QString( "#GuiMessageEdit { border: 1px solid %1; border-radius: 18px; padding: 8px 14px; selection-background-color: %2; }" ).arg( border, accent );
   css += QString( "#GuiMessageEdit:focus { border: 1px solid %1; }" ).arg( accent );
   css += QString( "QPushButton#mp_pbSend { background-color: %1; border: none; border-radius: 19px; }" ).arg( accent );
   css += QString( "QPushButton#mp_pbSend:hover { background-color: %1; }" ).arg( accent_hover );

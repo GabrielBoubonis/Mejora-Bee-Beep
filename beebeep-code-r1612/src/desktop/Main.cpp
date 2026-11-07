@@ -105,6 +105,12 @@ int main( int argc, char *argv[] )
 
 
   BeeApplication bee_app( argc, argv );
+#ifdef Q_OS_WIN
+  // Modern font (available from Windows Vista/7) instead of the old "MS Shell Dlg 2"
+  QFont app_font( QLatin1String( "Segoe UI" ), 9 );
+  app_font.setStyleStrategy( QFont::PreferAntialias );
+  bee_app.setFont( app_font );
+#endif
   (void)Settings::instance();
   bee_app.setApplicationName( Settings::instance().programName() );
   bee_app.setOrganizationName( Settings::instance().organizationName() );
