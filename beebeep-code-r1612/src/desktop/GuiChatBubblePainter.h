@@ -38,12 +38,27 @@ public:
   explicit GuiChatBubblePainter( QTextEdit* );
   static void install( QTextEdit* );
 
+  // State of the file transfers shown in the file cards of the chat (green progress bar)
+  enum FileTransferState { FileTransferRunning, FileTransferCompleted, FileTransferFailed };
+  struct FileTransferInfo
+  {
+    int percent;
+    FileTransferState state;
+    QString message;
+    QString filePath;
+  };
+  static QString fileTransferKey( VNumber user_id, VNumber file_id );
+  static void setFileTransferProgress( const QString& key, int percent );
+  static void setFileTransferStopped( const QString& key, bool completed, const QString& message, const QString& file_path );
+  static bool fileTransferInfo( const QString& key, FileTransferInfo* );
+
 protected:
   bool eventFilter( QObject*, QEvent* );
   void paintBubbles();
 
 private:
   QTextEdit* mp_textEdit;
+  static QHash<QString, FileTransferInfo> s_fileTransfers;
 
 };
 

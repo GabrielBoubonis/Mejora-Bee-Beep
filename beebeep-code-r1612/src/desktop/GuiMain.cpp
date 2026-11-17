@@ -26,6 +26,7 @@
 #include "BeeApplication.h"
 #include "BeeUtils.h"
 #include "ChatManager.h"
+#include "GuiChatBubblePainter.h"
 #include "EmoticonManager.h"
 #include "FileDialog.h"
 #include "FileShare.h"
@@ -5000,6 +5001,10 @@ void GuiMain::onChangeSettingOnExistingFile( QAction* act )
 void GuiMain::onFileTransferProgress( VNumber peer_id, const User& u, const FileInfo& fi, FileSizeType bytes, qint64 elapsed_time )
 {
   mp_fileTransfer->setProgress( peer_id, u, fi, bytes, elapsed_time );
+  GuiChatBubblePainter::setFileTransferProgress( GuiChatBubblePainter::fileTransferKey( u.id(), fi.id() ),
+                                                 fi.size() > 0 ? static_cast<int>( (bytes * 100) / fi.size() ) : 0 );
+  foreach( GuiFloatingChat* fl_chat, m_floatingChats )
+    fl_chat->guiChat()->repaintChatView();
   if( Settings::instance().alwaysShowFileTransferProgress() )
   {
     if( !mp_dockFileTransfers->isVisible() )
@@ -5013,6 +5018,27 @@ void GuiMain::onFileTransferProgress( VNumber peer_id, const User& u, const File
 void GuiMain::onFileTransferMessage( VNumber peer_id, const User& u, const FileInfo& fi, const QString& msg, FileTransferPeer::TransferState ft_state )
 {
   mp_fileTransfer->setMessage( peer_id, u, fi, msg, ft_state );
+  if( FileTransferPeer::stateIsStopped( ft_state ) )
+  {
+    // the file card shows the end of the transfer ("File sent" with the links, or the error)
+    QString transfer_key = GuiChatBubblePainter::fileTransferKey( u.id(), fi.id() );
+    GuiChatBubblePainter::setFileTransferStopped( transfer_key, ft_state == FileTransferPeer::Completed, msg, fi.path() );
+    QString key_tag = QString( "<!--beeft:%1-->" ).arg( transfer_key );
+    foreach( GuiFloatingChat* fl_chat, m_floatingChats )
+    {
+      Chat c = ChatManager::instance().chat( fl_chat->guiChat()->chatId() );
+      if( !c.isValid() )
+        continue;
+      foreach( ChatMessage cm, c.messages() )
+      {
+        if( cm.isFileTransfer() && cm.message().contains( key_tag ) )
+        {
+          fl_chat->setChat( c );
+          break;
+        }
+      }
+    }
+  }
   if( Settings::instance().alwaysShowFileTransferProgress() )
   {
     if( !mp_dockFileTransfers->isVisible() )

@@ -125,7 +125,7 @@ bool Core::downloadFile( VNumber user_id, const FileInfo& fi, bool show_message 
   {
     icon_html = IconManager::instance().toHtml( "download.png", "*F*" );
     dispatchSystemMessage( chat_to_show_message.isValid() ? chat_to_show_message.id() : ID_DEFAULT_CHAT, u.id(), tr( "%1 Downloading %2 from %3." )
-                         .arg( icon_html, fi.name().toHtmlEscaped(), Bee::userNameToShow( u, true ) ),
+                         .arg( icon_html, QString( "<span class='bee-file-dl'>%1</span><!--beeft-hide-->" ).arg( fi.name().toHtmlEscaped() ), Bee::userNameToShow( u, true ) ),
                          chat_to_show_message.isValid() ? DispatchToChat : DispatchToDefaultAndPrivateChat, ChatMessage::FileTransfer, false );
   }
 
@@ -154,7 +154,7 @@ void Core::checkFileTransferMessage( VNumber peer_id, VNumber user_id, const Fil
   QUrl file_url = QUrl::fromLocalFile( fi.path() );
 
   if( FileTransferPeer::stateIsStopped( ft_state ) )
-    sys_msg = QString( "%1 %2 %3 %4 %5: %6." ).arg( icon_html, action_txt, fi.isDownload() ? fi.name().toHtmlEscaped() : QString( "<a href=\"%1\">%2</a>" ).arg( file_url.toString( QUrl::FullyEncoded ), fi.name().toHtmlEscaped() ), fi.isDownload() ? tr( "from" ) : tr( "to" ), Bee::userNameToShow( u, true ), Bee::lowerFirstLetter( msg ) );
+    sys_msg = QString( "%1 %2 %3 %4 %5: %6." ).arg( icon_html, action_txt, QString( "<span class='bee-file-st'>%1</span>" ).arg( fi.isDownload() ? fi.name().toHtmlEscaped() : QString( "<a href=\"%1\">%2</a>" ).arg( file_url.toString( QUrl::FullyEncoded ), fi.name().toHtmlEscaped() ) ), fi.isDownload() ? tr( "from" ) : tr( "to" ), Bee::userNameToShow( u, true ), Bee::lowerFirstLetter( msg ) ) + QLatin1String( "<!--beeft-hide-->" );
 
   if( fi.isDownload() && ft_state == FileTransferPeer::Completed )
   {
@@ -191,6 +191,7 @@ void Core::checkFileTransferMessage( VNumber peer_id, VNumber user_id, const Fil
       file_url.setScheme( FileInfo::urlSchemeShowFileInFolder() );
       sys_msg_open_file += QString( " " );
       sys_msg_open_file += tr( "Open %1." ).arg( QString( "<a href=\"%1\">%2</a>" ).arg( file_url.toString(), tr( "folder" ) ) );
+      sys_msg_open_file += QLatin1String( "<!--beeft-hide-->" );
     }
   }
 
@@ -421,6 +422,7 @@ bool Core::sendFileToUser( const User& u, const QString& file_path, const QStrin
         file_url.setScheme( FileInfo::urlSchemeShowFileInFolder() );
         msg += QString( " " );
         msg += tr( "Open %1." ).arg( QString( "<a href=\"%1\">%2</a>" ).arg( file_url.toString(), tr( "folder" ) ) );
+        msg += QString( "<!--beeft:%1-%2-->" ).arg( u.id() ).arg( fi.id() );
         dispatchSystemMessage( chat_selected.isValid() ? chat_selected.id() : ID_DEFAULT_CHAT, u.id(), msg,
                                chat_selected.isValid() ? DispatchToChat : DispatchToDefaultAndPrivateChat, ChatMessage::FileTransfer, true );
       }

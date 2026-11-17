@@ -22,8 +22,12 @@
 //////////////////////////////////////////////////////////////////////
 
 #include "BeeUtils.h"
+#include <QRegularExpression>
+#include <QTextDocumentFragment>
 #include "Chat.h"
 #include "GuiChatMessage.h"
+#include "GuiChatBubblePainter.h"
+#include "FileInfo.h"
 #include "ChatMessage.h"
 #include "Settings.h"
 #include "Settings.h"
@@ -300,10 +304,165 @@ QString GuiChatMessage::formatBubbleMessage( const User& u, const ChatMessage& c
   return bubbleSpacer( 0 ) + html_table_open + QLatin1String( "<tr><td>" ) + html_user_name + html_body + html_time + QLatin1String( "</td></tr></table>" );
 }
 
+static QString fileTypeColor( const QString& suffix )
+{
+  // One color for each family of files, so they are recognized at a glance
+  QString s = suffix.toLower();
+  if( s == "pdf" )
+    return QLatin1String( "#d93025" ); // red
+  if( QStringList( { "doc", "docx", "odt", "rtf", "txt", "md" } ).contains( s ) )
+    return QLatin1String( "#2b6cb0" ); // blue
+  if( QStringList( { "xls", "xlsx", "xlsm", "csv", "ods" } ).contains( s ) )
+    return QLatin1String( "#1e8e3e" ); // green
+  if( QStringList( { "ppt", "pptx", "odp", "pps", "ppsx" } ).contains( s ) )
+    return QLatin1String( "#d2691e" ); // orange
+  if( QStringList( { "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "tif", "tiff", "heic" } ).contains( s ) )
+    return QLatin1String( "#8e44ad" ); // purple
+  if( QStringList( { "mp3", "wav", "ogg", "m4a", "flac", "mp4", "avi", "mkv", "mov", "wmv" } ).contains( s ) )
+    return QLatin1String( "#c2185b" ); // pink
+  if( QStringList( { "zip", "rar", "7z", "tar", "gz", "bz2" } ).contains( s ) )
+    return QLatin1String( "#8d6e63" ); // brown
+  return QLatin1String( "#6b7686" ); // slate
+}
+
+static QColor mixColors( const QColor& base, const QColor& tint, double amount )
+{
+  return QColor( qRound( base.red() + (tint.red() - base.red()) * amount ),
+                 qRound( base.green() + (tint.green() - base.green()) * amount ),
+                 qRound( base.blue() + (tint.blue() - base.blue()) * amount ) );
+}
+
+static QString formatBubbleFileTransfer( const ChatMessage& cm, const QString& html_time )
+{
+  // File transfers are shown as a "file card" (no preview): the type of the file in a colored label,
+  // the name and the state of the transfer, inside a bubble with a dashed border of the same color.
+  // The status updates of the transfer (completed, canceled...) are small chips of the same color.
+  // GuiChatBubblePainter recognizes them by the cell padding (12 card, 8 chip) and draws the dashed border
+  // with the background color of the first colored text of the bubble.
+  static QRegularExpression re_status( "<span class='bee-file-st'>(.*?)</span>" );
+  static QRegularExpression re_named( "<span class='bee-file'>(.*?)</span>" );
+  static QRegularExpression re_link( "<a href=\"file:[^\"]*\">(.*?)</a>" );
+  static QRegularExpression re_img( "<img[^>]*>" );
+  static QRegularExpression re_tags( "<[^>]*>" );
+
+  QString msg = cm.message();
+  bool is_status = false;
+  QRegularExpressionMatch match = re_status.match( msg );
+  if( match.hasMatch() )
+    is_status = true;
+  else
+  {
+    match = re_named.match( msg );
+    if( !match.hasMatch() )
+      match = re_link.match( msg );
+  }
+  if( !match.hasMatch() )
+    return QString();
+
+  QString name_html = match.captured( 1 );
+  QString name_plain = QTextDocumentFragment::fromHtml( QString( name_html ).remove( re_tags ) ).toPlainText().trimmed();
+  if( name_plain.isEmpty() )
+    return QString();
+  QString suffix = QFileInfo( name_plain ).suffix();
+  QString type_label = suffix.isEmpty() ? QObject::tr( "FILE" ) : suffix.left( 4 ).toUpper();
+  QColor type_color( fileTypeColor( suffix ) );
+
+  bool is_outgoing = msg.contains( QLatin1String( "upload.png" ) );
+  bool align_right = is_outgoing;
+  if( Settings::instance().showTextInModeRTL() )
+    align_right = !align_right;
+  bool dark_style = Settings::instance().useDarkStyle();
+  QColor base_color( Bee::themeColor( Bee::ThemeBubbleIn ) );
+  QColor card_color = mixColors( base_color, type_color, dark_style ? 0.16 : 0.08 );
+  QColor accent_color = dark_style ? Bee::readableColor( type_color, card_color, 3.0 ) : type_color;
+
+  QString status_html = msg;
+  status_html.remove( re_img );
+  status_html = status_html.trimmed();
+
+  // State of the transfer (green bar drawn by GuiChatBubblePainter, final text written here)
+  static QRegularExpression re_key( "<!--beeft:([0-9]+-[0-9]+)-->" );
+  QString transfer_key = re_key.match( msg ).captured( 1 );
+  GuiChatBubblePainter::FileTransferInfo transfer_info;
+  if( !transfer_key.isEmpty() && GuiChatBubblePainter::fileTransferInfo( transfer_key, &transfer_info ) )
+  {
+    if( transfer_info.state == GuiChatBubblePainter::FileTransferCompleted )
+    {
+      QString file_path = transfer_info.filePath;
+      QString done_html = QString( "<span style=\"color:%1; font-weight:600;\">&#10003; %2</span>" )
+                            .arg( dark_style ? QLatin1String( "#4cc970" ) : QLatin1String( "#1e8e3e" ), is_outgoing ? QObject::tr( "File sent" ) : QObject::tr( "File received" ) );
+      if( !file_path.isEmpty() )
+      {
+        QUrl file_url = QUrl::fromLocalFile( file_path );
+        QUrl folder_url = file_url;
+        folder_url.setScheme( FileInfo::urlSchemeShowFileInFolder() );
+        done_html += QString( " &nbsp;&middot;&nbsp; <a href=\"%1\">%2</a> &nbsp;&middot;&nbsp; <a href=\"%3\">%4</a>" )
+                       .arg( file_url.toString( QUrl::FullyEncoded ), QObject::tr( "Open" ), folder_url.toString(), QObject::tr( "Show in folder" ) );
+      }
+      status_html = done_html;
+    }
+    else if( transfer_info.state == GuiChatBubblePainter::FileTransferFailed )
+      status_html = QString( "<span style=\"color:%1;\">%2</span>" ).arg( dark_style ? QLatin1String( "#ff7b72" ) : QLatin1String( "#c5221f" ), transfer_info.message.toHtmlEscaped() );
+  }
+  QString text_color = Bee::themeColor( Bee::ThemeBubbleText );
+  QString muted_color = Bee::themeColor( Bee::ThemeBubbleMeta );
+  QString table_open = QString( "<table align=%1 border=0 cellspacing=0 cellpadding=%2 style=\"border-color:%3; margin-top:%4px; margin-bottom:0px; margin-%5:70px; margin-%6:8px;\">" )
+                         .arg( align_right ? QLatin1String( "right" ) : QLatin1String( "left" ),
+                               is_status ? QLatin1String( "8" ) : QLatin1String( "12" ),
+                               card_color.name(),
+                               is_status ? QLatin1String( "4" ) : QLatin1String( "12" ),
+                               align_right ? QLatin1String( "left" ) : QLatin1String( "right" ),
+                               align_right ? QLatin1String( "right" ) : QLatin1String( "left" ) );
+
+  if( is_status )
+  {
+    // Only the news of the transfer ("transfer completed in 31 ms"): the name is already in the card above
+    QString status_text = status_html;
+    int colon_pos = status_text.lastIndexOf( QLatin1String( ": " ) );
+    if( colon_pos > 0 && status_text.indexOf( re_status ) < colon_pos )
+    {
+      status_text = status_text.mid( colon_pos + 2 ).trimmed();
+      if( !status_text.isEmpty() )
+        status_text[ 0 ] = status_text.at( 0 ).toUpper();
+      if( status_text.endsWith( QLatin1Char( '.' ) ) )
+        status_text.chop( 1 );
+    }
+    // the first colored character (background) gives the color of the dashed border to GuiChatBubblePainter
+    QString chip = QString( "<span style=\"background-color:%1; color:%1;\">|</span>&nbsp;&nbsp;<span style=\"color:%2; font-size:%3pt;\">" )
+                     .arg( accent_color.name(), muted_color, QString::number( qMax( 9, Settings::instance().chatFont().pointSize() - 2 ) ) )
+                   + status_text + QString( " &middot; " ) + Bee::replaceHtmlSpecialCharacters( cm.timestamp().toString( "HH:mm" ) )
+                   + QLatin1String( "</span>" );
+    return bubbleSpacer( 0 ) + table_open + QLatin1String( "<tr><td>" ) + chip + QLatin1String( "</td></tr></table>" );
+  }
+
+  // the label of the type (colored background) gives the color of the dashed border to GuiChatBubblePainter
+  QString card = QString( "<p style=\"margin-top:0px; margin-bottom:0px;\">%4<span style=\"background-color:%1; color:#ffffff; font-weight:700;\">&nbsp;%2&nbsp;</span>%5"
+                          "&nbsp;&nbsp;<span style=\"color:%3; font-weight:600;\">" )
+                   .arg( type_color.name(), type_label, text_color,
+                         transfer_key.isEmpty() ? QString() : QString( "<a name=\"beeft-%1\">" ).arg( transfer_key ),
+                         transfer_key.isEmpty() ? QString() : QLatin1String( "</a>" ) )
+                 + name_html.remove( re_tags )
+                 + QString( "</span></p><p style=\"margin-top:6px; margin-bottom:0px;\"><span style=\"color:%1; font-size:%2pt;\">" ).arg( muted_color, QString::number( qMax( 9, Settings::instance().chatFont().pointSize() - 2 ) ) )
+                 + bubbleSafeLineBreaks( status_html )
+                 + QLatin1String( "</span></p>" );
+  return bubbleSpacer( 0 ) + table_open + QLatin1String( "<tr><td>" ) + card + html_time + QLatin1String( "</td></tr></table>" );
+}
+
 QString GuiChatMessage::formatBubbleSystemMessage( const ChatMessage& cm, bool show_datestamp )
 {
   if( cm.message().isEmpty() )
     return QString( "" );
+
+  if( cm.isFileTransfer() )
+  {
+    if( cm.message().contains( QLatin1String( "<!--beeft-hide-->" ) ) )
+      return QString( "" ); // "Downloading...", "transfer completed": the file card with its green bar already tells it
+    QString html_time = QString( "<p align=right style=\"margin-top:6px; margin-bottom:0px;\"><span style=\"color:%1; font-size:%2pt;\">%3</span></p>" )
+                          .arg( Bee::themeColor( Bee::ThemeBubbleMeta ), bubbleSmallFontSize(), bubbleTimeToString( cm, show_datestamp ) );
+    QString file_card = formatBubbleFileTransfer( cm, html_time );
+    if( !file_card.isEmpty() )
+      return file_card;
+  }
 
   QString date_time_stamp = cm.type() != ChatMessage::ImagePreview ? bubbleTimeToString( cm, show_datestamp ) : QString( "" );
   QString html_text = QString( "%1%2" ).arg( cm.message(), date_time_stamp.isEmpty() ? date_time_stamp : QString( " &middot; %1" ).arg( date_time_stamp ) );

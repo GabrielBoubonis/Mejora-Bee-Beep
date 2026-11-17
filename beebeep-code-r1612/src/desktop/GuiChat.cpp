@@ -831,6 +831,11 @@ void GuiChat::selectFont()
   }
 }
 
+void GuiChat::repaintChatView()
+{
+  mp_teChat->viewport()->update();
+}
+
 void GuiChat::updateChatColors()
 {
   QString background_color = m_chatId == ID_DEFAULT_CHAT ? Settings::instance().defaultChatBackgroundColor() : Settings::instance().chatBackgroundColor();

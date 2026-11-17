@@ -46,6 +46,7 @@ public:
   void updateActions( const Chat&, bool is_connected, int connected_users, bool file_transfer_is_active );
 
   bool setChat( const Chat& );
+  void repaintChatView();
   inline VNumber chatId() const;
   void ensureLastMessageVisible();
   void updateShortcuts();

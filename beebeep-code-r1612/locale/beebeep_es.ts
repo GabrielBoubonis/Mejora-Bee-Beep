@@ -7325,6 +7325,26 @@ Por favor, elija un nombre diferente.</translation>
         <source>Resume transfer</source>
         <translation>Reanudar transferencia</translation>
     </message>
+    <message>
+        <source>FILE</source>
+        <translation>ARCH</translation>
+    </message>
+    <message>
+        <source>File sent</source>
+        <translation>Archivo enviado</translation>
+    </message>
+    <message>
+        <source>File received</source>
+        <translation>Archivo recibido</translation>
+    </message>
+    <message>
+        <source>Open</source>
+        <translation>Abrir</translation>
+    </message>
+    <message>
+        <source>Show in folder</source>
+        <translation>Ver en la carpeta</translation>
+    </message>
 </context>
 <context>
     <name>RainbowTextMarker</name>

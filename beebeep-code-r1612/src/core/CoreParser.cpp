@@ -198,7 +198,8 @@ void Core::parseFileMessage( const User& u, const Message& m )
   if( m.hasFlag( Message::VoiceMessage ) )
     sys_msg = tr( "%1 %2 is sending to you the voice message: %3" ).arg( IconManager::instance().toHtml( "download.png", "*F*" ), Bee::userNameToShow( u, true ), fi.name().toHtmlEscaped() );
   else
-    sys_msg = tr( "%1 %2 is sending to you the file: %3" ).arg( IconManager::instance().toHtml( "download.png", "*F*" ), Bee::userNameToShow( u, true ), fi.name().toHtmlEscaped() );
+    sys_msg = tr( "%1 %2 is sending to you the file: %3" ).arg( IconManager::instance().toHtml( "download.png", "*F*" ), Bee::userNameToShow( u, true ), QString( "<span class='bee-file'>%1</span>" ).arg( fi.name().toHtmlEscaped() ) )
+              + QString( "<!--beeft:%1-%2-->" ).arg( u.id() ).arg( fi.id() );
   dispatchSystemMessage( chat_to_show_message.id(), u.id(), sys_msg, chat_to_show_message.isValid() ? DispatchToChat : DispatchToAllChatsWithUser, ChatMessage::FileTransfer, false );
 
   if( !Settings::instance().isFileExtensionAllowedInFileTransfer( fi.suffix() ) )
