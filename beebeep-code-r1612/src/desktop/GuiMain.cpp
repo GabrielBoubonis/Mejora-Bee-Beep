@@ -250,6 +250,13 @@ GuiMain::GuiMain( QWidget *parent )
 
   connect( statusBar(), SIGNAL( messageChanged( const QString& ) ), this, SLOT( onStatusBarMessageChanged( const QString& ) ) );
 
+  // credits of this improved version, discreet, bottom right
+  QLabel* credits_label = new QLabel( tr( "Improved by the %1" ).arg( QString::fromUtf8( "Centro Informático Local" ) ), this );
+  credits_label->setObjectName( "GuiCreditsLabel" );
+  credits_label->setToolTip( tr( "Latest version improved by the %1, in collaboration with Claude (Anthropic)." ).arg( QString::fromUtf8( "Centro Informático Local" ) ) );
+  credits_label->setContentsMargins( 0, 0, 10, 0 );
+  statusBar()->addPermanentWidget( credits_label );
+
   initShortcuts();
   initGuiItems();
   updateShortcuts();
@@ -904,7 +911,7 @@ void GuiMain::showAbout()
 #else
   QMessageBox::about( this, Settings::instance().programName(),
 #endif
-                      QString( "<b>%1</b> - Free Office Messenger<br><br>%2<br>%3 %4 %5<br><br>%6 %7<br>%8<br>" )
+                      QString( "<b>%1</b> - Free Office Messenger<br><br>%2<br>%3 %4 %5<br><br>%6 %7<br>%8<br><br>%9<br>" )
                         .arg( Settings::instance().programName() )
                         .arg( Settings::instance().isDevelopmentVersion() ? tr( "Development version") : tr( "Version" ) )
                         .arg( Settings::instance().version( true, true, true ) )
@@ -913,6 +920,7 @@ void GuiMain::showAbout()
                         .arg( tr( "developed by" ) )
                         .arg( QString( "<a href='%1'>Marco Mastroddi</a>" ).arg( Settings::instance().developerWebSite() ) )
                         .arg( QString( "e-mail: <a href='mailto://marco.mastroddi@gmail.com'>marco.mastroddi@gmail.com</a><br>web: <a href='%1'>www.beebeep.net</a>" ).arg( Settings::instance().officialWebSite() ) )
+                        .arg( tr( "Latest version improved by the %1, in collaboration with Claude (Anthropic)." ).arg( QString( "<b>%1</b>" ).arg( QString::fromUtf8( "Centro Informático Local" ) ) ) )
                       );
 }
 

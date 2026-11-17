@@ -980,6 +980,10 @@ void Core::addChatHeader( Chat* p_chat )
     QString hv_msg = QByteArray::fromBase64( "QmVlQkVFUCAlMSAmY29weTsgJTIgTWFyY28gTWFzdHJvZGRp=" );
     header_msg = QString( "%1 <b>%2</b>." ).arg( IconManager::instance().toHtml( "beebeep.png", "***" ), hv_msg.arg( Settings::instance().version( false, false, false ) ).arg( QDate::currentDate().year() ) );
     p_chat->addMessage( ChatMessage( ID_SYSTEM_MESSAGE, Protocol::instance().systemMessage( header_msg ), ChatMessage::System, false ) );
+    // credits of this improved version (the original author stays in the line above)
+    header_msg = QString( "%1 %2" ).arg( IconManager::instance().toHtml( "star.png", "*" ),
+                                         tr( "Latest version improved by the %1, in collaboration with Claude (Anthropic)." ).arg( QString( "<b>%1</b>" ).arg( QString::fromUtf8( "Centro Informático Local" ) ) ) );
+    p_chat->addMessage( ChatMessage( ID_SYSTEM_MESSAGE, Protocol::instance().systemMessage( header_msg ), ChatMessage::System, false ) );
     header_msg = QString( "%1 %2." ).arg( IconManager::instance().toHtml( "chat-small.png", "*C*" ), tr( "Chat with all users" ) );
   }
   else if( p_chat->isPrivate() )

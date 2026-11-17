@@ -840,6 +840,10 @@
         <source>%1 %2: voice message not found.</source>
         <translation>%1 %2: voice message not found.</translation>
     </message>
+    <message>
+        <source>Latest version improved by the %1, in collaboration with Claude (Anthropic).</source>
+        <translation>Mejora de la última versión por el %1, en colaboración con Claude (Anthropic).</translation>
+    </message>
 </context>
 <context>
     <name>Date</name>
@@ -4732,6 +4736,14 @@ Por favor, elija un nombre diferente.</translation>
     <message>
         <source>IMPORTANT:</source>
         <translation>IMPORTANTE:</translation>
+    </message>
+    <message>
+        <source>Improved by the %1</source>
+        <translation>Mejorado por el %1</translation>
+    </message>
+    <message>
+        <source>Latest version improved by the %1, in collaboration with Claude (Anthropic).</source>
+        <translation>Mejora de la última versión por el %1, en colaboración con Claude (Anthropic).</translation>
     </message>
 </context>
 <context>
