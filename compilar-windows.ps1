@@ -1,8 +1,9 @@
-# Compila BeeBEEP para Windows 7/10/11 (32 bits) y arma la carpeta dist\BeeBEEP lista para copiar.
+# Compila BeeBEEP para Windows 7/10/11 (32 bits) y genera el instalador dist\BeeBEEP-<version>-instalador.exe
 # Requisitos (una sola vez):
 #   python -m pip install aqtinstall
 #   python -m aqt install-qt windows desktop 5.15.2 win32_mingw81 -O C:\Qt
 #   python -m aqt install-tool windows desktop tools_mingw qt.tools.win32_mingw810 -O C:\Qt
+#   winget install JRSoftware.InnoSetup
 # Uso: powershell -ExecutionPolicy Bypass -File compilar-windows.ps1
 
 $ErrorActionPreference = "Stop"
@@ -39,4 +40,18 @@ foreach ($p in $plugins) {
   New-Item -ItemType Directory -Force $dest | Out-Null
   Copy-Item "$Qt\plugins\$p" $dest
 }
+Copy-Item "$Src\LICENSE.txt", "$Src\CHANGELOG.txt" $Dist
+Copy-Item "$Src\src\images\lucide\LICENSE" "$Dist\LICENSE-iconos-Lucide.txt"
 Write-Host "Listo: $Dist"
+
+# Instalador (Inno Setup 6: winget install JRSoftware.InnoSetup)
+$Iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "$env:ProgramFiles\Inno Setup 6\ISCC.exe") |
+        Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $Iscc) {
+  Write-Host "Inno Setup no esta instalado: se omite el instalador (winget install JRSoftware.InnoSetup)" -ForegroundColor Yellow
+} else {
+  $Version = (Select-String -Path "$Src\src\core\Version.h" -Pattern 'BEEBEEP_VERSION\[\] = "([^"]+)"').Matches[0].Groups[1].Value
+  & $Iscc /Q "/DAppVersion=$Version" "/DSourceDir=$Dist" "/O$Root\dist" "$Src\scripts\windows\beebeep.iss"
+  if ($LASTEXITCODE -ne 0) { throw "no se pudo crear el instalador" }
+  Write-Host "Instalador: $Root\dist\BeeBEEP-$Version-instalador.exe"
+}

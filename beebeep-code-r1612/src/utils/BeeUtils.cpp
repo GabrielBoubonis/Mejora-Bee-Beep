@@ -21,6 +21,10 @@
 //
 //////////////////////////////////////////////////////////////////////
 
+#include <QSvgRenderer>
+#ifdef Q_OS_WIN
+  #include <windows.h>
+#endif
 #include "Avatar.h"
 #include "BeeUtils.h"
 #include "ChatMessage.h"
@@ -694,6 +698,33 @@ static int GetBoxSize( int pix_size )
   return box_size;
 }
 
+static QPixmap initialsAvatar( const QString& name, const QColor& background, const QSize& avatar_size )
+{
+  // One or two big initials ("J", "MG") centered on the color of the user
+  QStringList parts = name.simplified().split( QLatin1Char( ' ' ), Qt::SkipEmptyParts );
+  QString initials;
+  if( parts.size() >= 2 )
+    initials = QString( parts.at( 0 ).at( 0 ) ) + QString( parts.at( 1 ).at( 0 ) );
+  else if( !parts.isEmpty() )
+    initials = parts.at( 0 ).left( 1 );
+  else
+    initials = QLatin1String( "?" );
+  initials = initials.toUpper();
+
+  QPixmap pm( avatar_size );
+  pm.fill( background );
+  QPainter p( &pm );
+  p.setRenderHint( QPainter::TextAntialiasing, true );
+  QFont f = QApplication::font();
+  f.setBold( true );
+  f.setPixelSize( qMax( 7, qRound( avatar_size.height() * (initials.size() > 1 ? 0.38 : 0.48) ) ) );
+  p.setFont( f );
+  p.setPen( background.lightness() > 165 ? QColor( "#1b2533" ) : QColor( Qt::white ) );
+  p.drawText( QRect( QPoint( 0, 0 ), avatar_size ), Qt::AlignCenter, initials );
+  p.end();
+  return pm;
+}
+
 QPixmap Bee::avatarForUser( const User& u, const QSize& avatar_size, bool use_available_user_image, int user_status )
 {
   QPixmap user_avatar;
@@ -704,7 +735,8 @@ QPixmap Bee::avatarForUser( const User& u, const QSize& avatar_size, bool use_av
   {
     default_avatar_used = true;
     Avatar av;
-    av.setName( u.isValid() ? (Settings::instance().useUserFullName() && u.vCard().hasFullName() ? u.vCard().fullName( Settings::instance().useUserFirstNameFirstInFullName() ) : u.name()) : "??" );
+    QString av_name = u.isValid() ? (Settings::instance().useUserFullName() && u.vCard().hasFullName() ? u.vCard().fullName( Settings::instance().useUserFirstNameFirstInFullName() ) : u.name()) : "??";
+    av.setName( av_name );
     if( u.isStatusConnected() )
       av.setColor( u.color() );
     else
@@ -716,7 +748,7 @@ QPixmap Bee::avatarForUser( const User& u, const QSize& avatar_size, bool use_av
       return user_avatar;
     }
     else
-      user_avatar = av.pixmap();
+      user_avatar = initialsAvatar( av_name, u.isStatusConnected() ? QColor( u.color() ) : QColor( "#9aa3ad" ), avatar_size );
   }
   else
   {
@@ -728,37 +760,27 @@ QPixmap Bee::avatarForUser( const User& u, const QSize& avatar_size, bool use_av
     }
   }
 
-  int pix_height = user_avatar.height();
+  // Round avatar with a small status dot (as in the modern chat apps)
+  Q_UNUSED( default_avatar_used );
   int pix_width = user_avatar.width();
-  int box_height = GetBoxSize( pix_height );
-  int box_width = GetBoxSize( pix_width );
-  int box_start_height = qMax( 1, box_height / 2 );
-  int box_start_width = qMax( 1, box_width / 2 );
-
+  int pix_height = user_avatar.height();
   QPixmap pix( pix_width, pix_height );
+  pix.fill( Qt::transparent );
   QPainter p( &pix );
-  if( !default_avatar_used )
-  {
-    pix.fill( Bee::userStatusColor( user_status ) );
-    p.drawPixmap( box_start_width, box_start_height, pix_width - box_width, pix_height - box_height, user_avatar.scaled( pix_width - box_width, pix_height - box_height ) );
-  }
-  else
-  {
-    p.drawPixmap( 0, 0, pix_width, pix_height, user_avatar );
-    p.setPen( Bee::userStatusColor( user_status ) );
-    for( int i = 0; i < box_height; i++ )
-    {
-      p.drawLine( 0, i, pix_width, i );
-      p.drawLine( 0, pix_height-box_height+i, pix_width, pix_height-box_height+i );
-    }
-
-    for( int i = 0; i < box_width; i++ )
-    {
-      p.drawLine( i, 0, i, pix_height );
-      p.drawLine( pix_width-box_width+i, 0, pix_width-box_width+i, pix_height );
-    }
-  }
-
+  p.setRenderHint( QPainter::Antialiasing, true );
+  p.setRenderHint( QPainter::SmoothPixmapTransform, true );
+  QPainterPath round_clip;
+  round_clip.addEllipse( QRectF( 0, 0, pix_width, pix_height ) );
+  p.setClipPath( round_clip );
+  p.drawPixmap( 0, 0, pix_width, pix_height, user_avatar );
+  p.setClipping( false );
+  qreal dot_size = qMax( 7.0, pix_width * 0.32 );
+  qreal ring = qMax( 1.5, dot_size / 5.0 );
+  QRectF dot_rect( pix_width - dot_size, pix_height - dot_size, dot_size, dot_size );
+  p.setPen( QPen( QColor( Bee::themeColor( Bee::ThemePanel ) ), ring ) );
+  p.setBrush( Bee::userStatusColor( user_status ) );
+  p.drawEllipse( dot_rect.adjusted( ring / 2, ring / 2, -ring / 2, -ring / 2 ) );
+  p.end();
   return pix;
 }
 
@@ -1284,44 +1306,50 @@ QString Bee::beeColorsToHtmlText( const QString& txt )
 
 QString Bee::themeColor( ThemeColor tc, bool dark_style )
 {
+  // "Miel & Pizarra": calm slate neutrals with the honey of BeeBEEP as the only accent.
+  // Text colors keep a contrast of at least 4.5:1 on their backgrounds (WCAG AA).
   static const char* light_colors[ NumThemeColors ] = {
-    "#f0f2f5", // ThemeWindow
+    "#f3f5f8", // ThemeWindow
     "#ffffff", // ThemePanel
     "#ffffff", // ThemeInput
-    "#111b21", // ThemeText
-    "#667781", // ThemeMutedText
-    "#00a884", // ThemeAccent
-    "#008f6f", // ThemeAccentHover
-    "#efeae2", // ThemeChatBackground
-    "#d9fdd3", // ThemeBubbleOut
+    "#1b2533", // ThemeText
+    "#586374", // ThemeMutedText
+    "#f2a900", // ThemeAccent
+    "#d99700", // ThemeAccentHover
+    "#edf1f5", // ThemeChatBackground
+    "#fff0c2", // ThemeBubbleOut
     "#ffffff", // ThemeBubbleIn
-    "#111b21", // ThemeBubbleText
-    "#667781", // ThemeBubbleMeta
-    "#ffeecd", // ThemeSystemPill
-    "#54656f", // ThemeSystemText
-    "#d1d7db", // ThemeBorder
-    "#e9edef", // ThemeSelection
-    "#027eb5"  // ThemeLink
+    "#1b2533", // ThemeBubbleText
+    "#5e6878", // ThemeBubbleMeta
+    "#e3e8ee", // ThemeSystemPill
+    "#4e5968", // ThemeSystemText
+    "#d6dde5", // ThemeBorder
+    "#eef2f6", // ThemeSelection
+    "#1f5fad", // ThemeLink
+    "#1b2533", // ThemeAccentText
+    "#fff3cc"  // ThemeHighlight
   };
 
   static const char* dark_colors[ NumThemeColors ] = {
-    "#111b21", // ThemeWindow
-    "#202c33", // ThemePanel
-    "#2a3942", // ThemeInput
-    "#e9edef", // ThemeText
-    "#8696a0", // ThemeMutedText
-    "#00a884", // ThemeAccent
-    "#06cf9c", // ThemeAccentHover
-    "#0b141a", // ThemeChatBackground
-    "#005c4b", // ThemeBubbleOut
-    "#202c33", // ThemeBubbleIn
-    "#e9edef", // ThemeBubbleText
-    "#aebac1", // ThemeBubbleMeta
-    "#182229", // ThemeSystemPill
-    "#8696a0", // ThemeSystemText
-    "#313d45", // ThemeBorder
-    "#2a3942", // ThemeSelection
-    "#53bdeb"  // ThemeLink
+    "#0e151d", // ThemeWindow
+    "#16202b", // ThemePanel
+    "#1e2a37", // ThemeInput
+    "#e7ecf2", // ThemeText
+    "#9aa7b5", // ThemeMutedText
+    "#f5b301", // ThemeAccent
+    "#ffc529", // ThemeAccentHover
+    "#0b1118", // ThemeChatBackground
+    "#3a3015", // ThemeBubbleOut
+    "#1e2a37", // ThemeBubbleIn
+    "#e7ecf2", // ThemeBubbleText
+    "#a9b4c0", // ThemeBubbleMeta
+    "#17212c", // ThemeSystemPill
+    "#9aa7b5", // ThemeSystemText
+    "#2a3746", // ThemeBorder
+    "#223040", // ThemeSelection
+    "#7db6ff", // ThemeLink
+    "#17120a", // ThemeAccentText
+    "#3a3218"  // ThemeHighlight
   };
 
   if( tc < 0 || tc >= NumThemeColors )
@@ -1359,8 +1387,8 @@ static QPalette themePalette( bool dark_style )
   p.setColor( QPalette::ButtonText, text );
   p.setColor( QPalette::Link, link );
   p.setColor( QPalette::LinkVisited, link.darker( 120 ) );
-  p.setColor( QPalette::Highlight, accent );
-  p.setColor( QPalette::HighlightedText, QColor( "#ffffff" ) );
+  p.setColor( QPalette::Highlight, QColor( Bee::themeColor( Bee::ThemeHighlight, dark_style ) ) );
+  p.setColor( QPalette::HighlightedText, text );
   p.setColor( QPalette::Light, dark_style ? input : QColor( "#ffffff" ) );
   p.setColor( QPalette::Midlight, dark_style ? input.lighter( 110 ) : window );
   p.setColor( QPalette::Mid, border );
@@ -1393,6 +1421,113 @@ QPalette Bee::lightPalette()
   return themePalette( false );
 }
 
+static QPixmap themeIconPixmap( const QByteArray& svg_data, const QString& color, int icon_size )
+{
+  QByteArray svg = svg_data;
+  svg.replace( "currentColor", color.toLatin1() );
+  QSvgRenderer renderer( svg );
+  QPixmap pm( icon_size, icon_size );
+  pm.fill( Qt::transparent );
+  QPainter p( &pm );
+  p.setRenderHint( QPainter::Antialiasing, true );
+  renderer.render( &p, QRectF( 0, 0, icon_size, icon_size ) );
+  p.end();
+  return pm;
+}
+
+QIcon Bee::themeIcon( const QString& icon_name, ThemeColor color, ThemeColor color_on )
+{
+  QString color_off_name = themeColor( color );
+  return themeIconWithColor( icon_name, color_off_name, color_on < NumThemeColors ? themeColor( color_on ) : color_off_name, themeColor( ThemeBorder ) );
+}
+
+QIcon Bee::themeIconWithColor( const QString& icon_name, const QString& color_off_name, const QString& color_on_name, const QString& color_disabled_name )
+{
+  QFile svg_file( QString( ":/images/lucide/%1.svg" ).arg( icon_name ) );
+  if( !svg_file.open( QIODevice::ReadOnly ) )
+  {
+    qWarning() << "Theme icon not found:" << icon_name;
+    return QIcon();
+  }
+  QByteArray svg_data = svg_file.readAll();
+  svg_file.close();
+
+  QIcon icon;
+  QList<int> sizes;
+  sizes << 16 << 20 << 24 << 28 << 32 << 40 << 48 << 64;
+  foreach( int s, sizes )
+  {
+    icon.addPixmap( themeIconPixmap( svg_data, color_off_name, s ), QIcon::Normal, QIcon::Off );
+    icon.addPixmap( themeIconPixmap( svg_data, color_on_name, s ), QIcon::Normal, QIcon::On );
+    icon.addPixmap( themeIconPixmap( svg_data, color_disabled_name, s ), QIcon::Disabled, QIcon::Off );
+  }
+  return icon;
+}
+
+QIcon Bee::unreadBadgeIcon( const QIcon& base_icon, int unread_messages, const QSize& icon_size )
+{
+  // The picture of the user (or of the chat) with a big honey circle and the number of new messages:
+  // easier to notice and to understand than a blinking envelope
+  QPixmap pm = base_icon.pixmap( icon_size );
+  if( pm.isNull() )
+  {
+    pm = QPixmap( icon_size );
+    pm.fill( Qt::transparent );
+  }
+  pm = pm.scaled( icon_size, Qt::IgnoreAspectRatio, Qt::SmoothTransformation );
+  QPainter p( &pm );
+  p.setRenderHint( QPainter::Antialiasing, true );
+  p.setRenderHint( QPainter::TextAntialiasing, true );
+  int d = qMax( 12, qRound( icon_size.height() * 0.5 ) );
+  QRectF badge( icon_size.width() - d, 0, d, d );
+  p.setPen( QPen( QColor( themeColor( ThemePanel ) ), qMax( 1.5, d / 10.0 ) ) );
+  p.setBrush( QColor( themeColor( ThemeAccent ) ) );
+  p.drawEllipse( badge.adjusted( 0.5, 0.5, -0.5, -0.5 ) );
+  QFont f = QApplication::font();
+  f.setBold( true );
+  QString txt = unread_messages > 9 ? QLatin1String( "9+" ) : QString::number( unread_messages );
+  f.setPixelSize( qMax( 7, qRound( d * (txt.size() > 1 ? 0.5 : 0.62) ) ) );
+  p.setFont( f );
+  p.setPen( QColor( "#1b2533" ) );
+  p.drawText( badge, Qt::AlignCenter, txt );
+  p.end();
+  return QIcon( pm );
+}
+
+void Bee::setDarkTitleBar( QWidget* w, bool dark_title_bar )
+{
+#ifdef Q_OS_WIN
+  // Windows 10 (1809+) and 11: title bar of the window in dark colors. On Windows 7 the call is simply ignored.
+  if( !w || !w->isWindow() || !w->testAttribute( Qt::WA_WState_Created ) )
+    return;
+  typedef HRESULT (WINAPI *DwmSetWindowAttributeFunc)( HWND, DWORD, LPCVOID, DWORD );
+  static DwmSetWindowAttributeFunc dwm_set_window_attribute = Q_NULLPTR;
+  static bool dwm_resolved = false;
+  if( !dwm_resolved )
+  {
+    dwm_resolved = true;
+    HMODULE dwm_lib = LoadLibraryW( L"dwmapi.dll" );
+    if( dwm_lib )
+      dwm_set_window_attribute = reinterpret_cast<DwmSetWindowAttributeFunc>( reinterpret_cast<void*>( GetProcAddress( dwm_lib, "DwmSetWindowAttribute" ) ) );
+  }
+  if( !dwm_set_window_attribute )
+    return;
+  HWND hwnd = reinterpret_cast<HWND>( w->winId() );
+  QVariant last_value = w->property( "BeeDarkTitleBar" );
+  if( last_value.isValid() && last_value.toBool() == dark_title_bar )
+    return;
+  BOOL use_dark = dark_title_bar ? TRUE : FALSE;
+  if( FAILED( dwm_set_window_attribute( hwnd, 20, &use_dark, sizeof( use_dark ) ) ) )  // DWMWA_USE_IMMERSIVE_DARK_MODE
+    dwm_set_window_attribute( hwnd, 19, &use_dark, sizeof( use_dark ) );                // same attribute on Windows 10 1809-1909
+  w->setProperty( "BeeDarkTitleBar", dark_title_bar );
+  if( w->isVisible() )
+    SetWindowPos( hwnd, Q_NULLPTR, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED );
+#else
+  Q_UNUSED( w );
+  Q_UNUSED( dark_title_bar );
+#endif
+}
+
 QString Bee::themeStyleSheet()
 {
   bool dark_style = Settings::instance().useDarkStyle();
@@ -1403,73 +1538,96 @@ QString Bee::themeStyleSheet()
   QString muted = themeColor( ThemeMutedText, dark_style );
   QString accent = themeColor( ThemeAccent, dark_style );
   QString accent_hover = themeColor( ThemeAccentHover, dark_style );
+  QString accent_text = themeColor( ThemeAccentText, dark_style );
   QString border = themeColor( ThemeBorder, dark_style );
   QString selection = themeColor( ThemeSelection, dark_style );
-  QString scroll_handle = dark_style ? QLatin1String( "#3b4a54" ) : QLatin1String( "#c4c9cc" );
-  QString scroll_handle_hover = dark_style ? QLatin1String( "#4f5f69" ) : QLatin1String( "#a9b0b4" );
+  QString highlight = themeColor( ThemeHighlight, dark_style );
+  QString chat_bg = themeColor( ThemeChatBackground, dark_style );
+  QString scroll_handle = dark_style ? QLatin1String( "#3a4858" ) : QLatin1String( "#c3cbd4" );
+  QString scroll_handle_hover = dark_style ? QLatin1String( "#4d5d6f" ) : QLatin1String( "#a3adb9" );
 
   QString css;
 
-  // Toolbars and tool buttons: flat, rounded on hover
-  css += QString( "QToolBar { background-color: %1; border: none; border-bottom: 1px solid %2; spacing: 2px; padding: 3px; }" ).arg( panel, border );
-  css += QString( "QToolBar QToolButton { background: transparent; border: none; border-radius: 6px; padding: 4px; }" );
+  // Main tool bar: big icons with a short label under each one (nothing to guess)
+  css += QString( "QToolBar { background-color: %1; border: none; border-bottom: 1px solid %2; spacing: 2px; padding: 4px 6px; }" ).arg( panel, border );
+  css += QString( "QToolBar QToolButton { background: transparent; border: none; border-radius: 8px; padding: 5px 8px; color: %1; }" ).arg( text );
   css += QString( "QToolBar QToolButton:hover { background-color: %1; }" ).arg( selection );
-  css += QString( "QToolBar QToolButton:pressed, QToolBar QToolButton:checked { background-color: %1; }" ).arg( border );
+  css += QString( "QToolBar QToolButton:pressed, QToolBar QToolButton:checked { background-color: %1; }" ).arg( highlight );
+  css += QString( "QToolBar QToolButton:disabled { color: %1; }" ).arg( muted );
+  css += QString( "QToolBar#GuiMainToolBar QToolButton { min-width: 64px; }" );
 
-  // Tabs of the main window
+  // Navigation rail on the left (Activities, Users, Chats, Groups, Saved)
+  css += QString( "QToolBar#GuiNavigationBar { background-color: %1; border: none; border-right: 1px solid %2; padding: 8px 6px; spacing: 6px; }" ).arg( window, border );
+  css += QString( "QToolBar#GuiNavigationBar QToolButton { min-width: 78px; padding: 8px 4px; border-radius: 12px; color: %1; }" ).arg( muted );
+  css += QString( "QToolBar#GuiNavigationBar QToolButton:hover { background-color: %1; color: %2; }" ).arg( selection, text );
+  css += QString( "QToolBar#GuiNavigationBar QToolButton:checked { background-color: %1; color: %2; font-weight: 600; }" ).arg( highlight, text );
+
+  // Tabs (dialogs and the classic layout)
   css += QString( "QTabWidget::pane { border: none; background-color: %1; }" ).arg( panel );
-  css += QString( "QTabBar::tab { background: %1; color: %2; border: none; padding: 6px 10px; }" ).arg( panel, muted );
+  css += QString( "QTabBar::tab { background: %1; color: %2; border: none; padding: 7px 12px; }" ).arg( panel, muted );
   css += QString( "QTabBar::tab:top { border-bottom: 3px solid transparent; }" );
   css += QString( "QTabBar::tab:bottom { border-top: 3px solid transparent; }" );
   css += QString( "QTabBar::tab:left { border-right: 3px solid transparent; padding: 6px; }" );
   css += QString( "QTabBar::tab:right { border-left: 3px solid transparent; padding: 6px; }" );
-  css += QString( "QTabBar::tab:hover { background-color: %1; }" ).arg( selection );
-  css += QString( "QTabBar::tab:selected { color: %1; background-color: %2; }" ).arg( text, selection );
+  css += QString( "QTabBar::tab:hover { background-color: %1; color: %2; }" ).arg( selection, text );
+  css += QString( "QTabBar::tab:selected { color: %1; background-color: %2; }" ).arg( text, panel );
   css += QString( "QTabBar::tab:top:selected { border-bottom: 3px solid %1; }" ).arg( accent );
   css += QString( "QTabBar::tab:bottom:selected { border-top: 3px solid %1; }" ).arg( accent );
   css += QString( "QTabBar::tab:left:selected { border-right: 3px solid %1; }" ).arg( accent );
   css += QString( "QTabBar::tab:right:selected { border-left: 3px solid %1; }" ).arg( accent );
 
-  // Lists of users, chats, groups: more breathing room per row
+  // Lists of users, chats, groups: generous rows, honey highlight for the selected one
   css += QString( "QTreeView, QListView { border: none; outline: 0; }" );
-  css += QString( "QTreeView::item, QListView::item { padding: 4px 2px; }" );
+  css += QString( "QTreeView::item, QListView::item { padding: 6px 4px; border-radius: 8px; }" );
   css += QString( "QTreeView::item:hover, QListView::item:hover { background-color: %1; }" ).arg( selection );
-  css += QString( "QTreeView::item:selected, QListView::item:selected { background-color: %1; color: %2; }" ).arg( selection, text );
+  css += QString( "QTreeView::item:selected, QListView::item:selected { background-color: %1; color: %2; }" ).arg( highlight, text );
 
-  // Chat window: the conversation area and the WhatsApp-like composer bar
-  css += QString( "#GuiChatViewer { border: none; padding: 10px 12px; }" );
+  // Chat: conversation area, header and composer
+  css += QString( "#GuiChatViewer { border: none; padding: 12px 16px; }" );
   css += QString( "#mp_frameMessage { background-color: %1; border-top: 1px solid %2; }" ).arg( panel, border );
-  css += QString( "#GuiMessageEdit { border: 1px solid %1; border-radius: 18px; padding: 8px 14px; selection-background-color: %2; }" ).arg( border, accent );
-  css += QString( "#GuiMessageEdit:focus { border: 1px solid %1; }" ).arg( accent );
-  css += QString( "QPushButton#mp_pbSend { background-color: %1; border: none; border-radius: 19px; }" ).arg( accent );
+  css += QString( "#GuiMessageEdit { border: 1px solid %1; border-radius: 20px; padding: 10px 16px; selection-background-color: %2; selection-color: %3; }" ).arg( border, accent, accent_text );
+  css += QString( "#GuiMessageEdit:focus { border: 2px solid %1; padding: 9px 15px; }" ).arg( accent );
+  css += QString( "QPushButton#mp_pbSend { background-color: %1; color: %2; border: none; border-radius: 16px; padding: 0px 18px; font-weight: 600; min-height: 36px; }" ).arg( accent, accent_text );
   css += QString( "QPushButton#mp_pbSend:hover { background-color: %1; }" ).arg( accent_hover );
-  css += QString( "QPushButton#mp_pbSend:disabled { background-color: %1; }" ).arg( border );
-  css += QString( "QPushButton#mp_pbRecordVoiceMessage { background: transparent; border: none; border-radius: 19px; }" );
+  css += QString( "QPushButton#mp_pbSend:disabled { background-color: %1; color: %2; }" ).arg( border, muted );
+  css += QString( "QPushButton#mp_pbRecordVoiceMessage { background: transparent; border: none; border-radius: 16px; }" );
   css += QString( "QPushButton#mp_pbRecordVoiceMessage:hover { background-color: %1; }" ).arg( selection );
-  css += QString( "#GuiChatPlaceholder { background-color: %1; color: %2; }" ).arg( themeColor( ThemeChatBackground, dark_style ), muted );
-  css += QString( "#GuiEmbeddedChatTitleBar { background-color: %1; border: none; border-bottom: 1px solid %2; padding: 4px 8px; }" ).arg( panel, border );
+  css += QString( "#GuiChatPlaceholder { background-color: %1; color: %2; }" ).arg( chat_bg, muted );
+  css += QString( "QToolBar#GuiEmbeddedChatTitleBar { background-color: %1; border: none; border-bottom: 1px solid %2; padding: 6px 12px; }" ).arg( panel, border );
   css += QString( "#GuiEmbeddedChatTitle { color: %1; }" ).arg( text );
+  css += QString( "QToolButton#GuiFontSizeButton { min-width: 40px; min-height: 34px; border: 1px solid %1; border-radius: 10px; font-weight: 600; margin-left: 4px; }" ).arg( border );
+  css += QString( "QToolButton#GuiFontSizeButton:hover { background-color: %1; border-color: %2; }" ).arg( highlight, accent );
+  css += QString( "QToolBar#GuiFloatingChatToolBar { border-top: 1px solid %1; border-bottom: none; padding: 4px 8px; }" ).arg( border );
+  css += QString( "QToolBar#GuiFloatingChatToolBar QToolButton { padding: 6px 10px; }" );
+  css += QString( "QToolButton::menu-indicator { image: none; width: 0px; }" );
   css += QString( "QSplitter::handle { background-color: %1; }" ).arg( border );
   css += QString( "QSplitter::handle:vertical { height: 1px; }" );
   css += QString( "QSplitter::handle:horizontal { width: 1px; }" );
 
   // Inputs and buttons in dialogs
-  css += QString( "QLineEdit, QSpinBox, QComboBox { background-color: %1; color: %2; border: 1px solid %3; border-radius: 6px; padding: 4px 6px; }" ).arg( input, text, border );
-  css += QString( "QLineEdit:focus, QSpinBox:focus, QComboBox:focus { border: 1px solid %1; }" ).arg( accent );
-  css += QString( "QComboBox::drop-down { border: none; width: 18px; }" );
+  css += QString( "QLineEdit, QSpinBox, QComboBox { background-color: %1; color: %2; border: 1px solid %3; border-radius: 8px; padding: 6px 8px; }" ).arg( input, text, border );
+  css += QString( "QLineEdit:focus, QSpinBox:focus, QComboBox:focus { border: 2px solid %1; padding: 5px 7px; }" ).arg( accent );
+  css += QString( "QComboBox::drop-down { border: none; width: 20px; }" );
+  css += QString( "QPushButton { background-color: %1; color: %2; border: 1px solid %3; border-radius: 8px; padding: 6px 16px; min-height: 20px; }" ).arg( panel, text, border );
+  css += QString( "QPushButton:hover { background-color: %1; }" ).arg( selection );
+  css += QString( "QPushButton:default { background-color: %1; color: %2; border: none; font-weight: 600; }" ).arg( accent, accent_text );
+  css += QString( "QPushButton:default:hover { background-color: %1; }" ).arg( accent_hover );
+  css += QString( "QPushButton:flat { border: none; background: transparent; }" );
+  css += QString( "QCheckBox, QRadioButton { spacing: 8px; }" );
 
   // Menus, tooltips and status bar
-  css += QString( "QMenu { background-color: %1; color: %2; border: 1px solid %3; }" ).arg( panel, text, border );
-  css += QString( "QMenu::item:selected { background-color: %1; color: %2; }" ).arg( selection, text );
-  css += QString( "QMenu::separator { height: 1px; background: %1; margin: 4px 8px; }" ).arg( border );
-  css += QString( "QToolTip { background-color: %1; color: %2; border: 1px solid %3; padding: 4px; }" ).arg( panel, text, border );
+  css += QString( "QMenu { background-color: %1; color: %2; border: 1px solid %3; padding: 6px; }" ).arg( panel, text, border );
+  css += QString( "QMenu::item { padding: 7px 28px 7px 28px; border-radius: 6px; }" );
+  css += QString( "QMenu::item:selected { background-color: %1; color: %2; }" ).arg( highlight, text );
+  css += QString( "QMenu::separator { height: 1px; background: %1; margin: 5px 8px; }" ).arg( border );
+  css += QString( "QToolTip { background-color: %1; color: %2; border: 1px solid %3; padding: 6px 8px; }" ).arg( panel, text, border );
   css += QString( "QStatusBar { background-color: %1; color: %2; }" ).arg( window, muted );
 
   // Thin, rounded scrollbars
-  css += QString( "QScrollBar:vertical { background: transparent; width: 10px; margin: 0px; }" );
-  css += QString( "QScrollBar:horizontal { background: transparent; height: 10px; margin: 0px; }" );
-  css += QString( "QScrollBar::handle:vertical { background: %1; border-radius: 4px; min-height: 30px; margin: 1px; }" ).arg( scroll_handle );
-  css += QString( "QScrollBar::handle:horizontal { background: %1; border-radius: 4px; min-width: 30px; margin: 1px; }" ).arg( scroll_handle );
+  css += QString( "QScrollBar:vertical { background: transparent; width: 12px; margin: 0px; }" );
+  css += QString( "QScrollBar:horizontal { background: transparent; height: 12px; margin: 0px; }" );
+  css += QString( "QScrollBar::handle:vertical { background: %1; border-radius: 5px; min-height: 36px; margin: 2px; }" ).arg( scroll_handle );
+  css += QString( "QScrollBar::handle:horizontal { background: %1; border-radius: 5px; min-width: 36px; margin: 2px; }" ).arg( scroll_handle );
   css += QString( "QScrollBar::handle:hover { background: %1; }" ).arg( scroll_handle_hover );
   css += QString( "QScrollBar::add-line, QScrollBar::sub-line { width: 0px; height: 0px; }" );
   css += QString( "QScrollBar::add-page, QScrollBar::sub-page { background: none; }" );

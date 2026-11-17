@@ -188,6 +188,15 @@ static QString bubbleSpacer( int height_px )
   return QString( "<p style=\"margin-top:%1px; margin-bottom:0px; font-size:1px; -qt-line-height-type:fixed; line-height:1px;\"><span style=\"font-size:1px;\"><br></span></p>" ).arg( qMax( 0, height_px ) );
 }
 
+static QString bubbleSmallFontSize()
+{
+  // Time and notes: a little smaller than the message, but never tiny (readable for everybody)
+  int pt = Settings::instance().chatFont().pointSize();
+  if( pt <= 0 )
+    pt = 12;
+  return QString::number( qMax( 9, pt - 2 ) );
+}
+
 static QString bubbleSafeLineBreaks( QString html_text )
 {
   html_text.replace( QLatin1String( "<br>" ), QLatin1String( "<br />" ), Qt::CaseInsensitive );
@@ -230,7 +239,7 @@ QString GuiChatMessage::formatBubbleMessage( const User& u, const ChatMessage& c
 
   // Quotes ([quote]...[/quote]) become a block with a colored bar on the left, as in the modern chat apps
   QString quote_open = QString( "<table border=0 cellspacing=0 cellpadding=0 width=\"100%\" style=\"margin-top:2px; margin-bottom:6px;\">"
-                                "<tr><td width=4 bgcolor=\"%1\"></td><td bgcolor=\"%2\" style=\"padding:6px 8px;\"><font color=%3 size=2>" )
+                                "<tr><td width=4 bgcolor=\"%1\"></td><td bgcolor=\"%2\" style=\"padding:6px 8px;\"><font color=%3>" )
                          .arg( QLatin1String( "#d4a72c" ),
                                bubble_color.darker( dark_style ? 125 : 106 ).name(),
                                Bee::themeColor( dark_style ? Bee::ThemeBubbleMeta : Bee::ThemeSystemText ) );
@@ -271,12 +280,12 @@ QString GuiChatMessage::formatBubbleMessage( const User& u, const ChatMessage& c
     name_color = Bee::themeColor( Bee::ThemeAccent );
   }
   if( !user_name_to_show.isEmpty() )
-    html_user_name = QString( "<p style=\"margin-top:0px; margin-bottom:3px;\"><font color=%1 size=2><span style=\"font-weight:600;\">%2</span></font></p>" )
+    html_user_name = QString( "<p style=\"margin-top:0px; margin-bottom:4px;\"><span style=\"color:%1; font-weight:600;\">%2</span></p>" )
                        .arg( name_color, user_name_to_show );
   Q_UNUSED( use_your_name );
 
-  QString html_time = QString( "<p align=right style=\"margin-top:3px; margin-bottom:0px;\"><font color=%1 size=2>%2</font></p>" )
-                        .arg( Bee::themeColor( Bee::ThemeBubbleMeta ), bubbleTimeToString( cm, show_datestamp ) );
+  QString html_time = QString( "<p align=right style=\"margin-top:4px; margin-bottom:0px;\"><span style=\"color:%1; font-size:%2pt;\">%3</span></p>" )
+                        .arg( Bee::themeColor( Bee::ThemeBubbleMeta ), bubbleSmallFontSize(), bubbleTimeToString( cm, show_datestamp ) );
 
   bool align_right = is_outgoing;
   if( Settings::instance().showTextInModeRTL() )
@@ -308,8 +317,8 @@ QString GuiChatMessage::formatBubbleSystemMessage( const ChatMessage& cm, bool s
     html_text.prepend( textImportantPrefix() );
 
   // Centered and discreet, like the info notes of the mobile chat apps
-  return QString( "%1<p align=center style=\"margin-top:0px; margin-bottom:0px;\"><font color=%2 size=2>%3</font></p>" )
-           .arg( bubbleSpacer( 8 ), Bee::themeColor( Bee::ThemeSystemText ), bubbleSafeLineBreaks( html_text ) );
+  return QString( "%1<p align=center style=\"margin-top:0px; margin-bottom:0px;\"><span style=\"color:%2; font-size:%3pt;\">%4</span></p>" )
+           .arg( bubbleSpacer( 10 ), Bee::themeColor( Bee::ThemeSystemText ), bubbleSmallFontSize(), bubbleSafeLineBreaks( html_text ) );
 }
 
 QString GuiChatMessage::formatSystemMessage( const ChatMessage& cm, VNumber last_user_id, bool show_timestamp, bool show_datestamp, bool use_chat_compact )

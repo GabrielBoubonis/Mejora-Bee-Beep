@@ -36,13 +36,13 @@ QString GuiUserItem::othersWorkgroup()
 }
 
 GuiUserItem::GuiUserItem( QTreeWidget* parent )
-  : QTreeWidgetItem( parent ), m_parentWorkgroup( "" )
+  : QTreeWidgetItem( parent ), m_badgeShown( 0 ), m_parentWorkgroup( "" )
 {
   setData( 0, Workgroup, false );
 }
 
 GuiUserItem::GuiUserItem( QTreeWidgetItem* parent )
-  : QTreeWidgetItem( parent ), m_parentWorkgroup( "" )
+  : QTreeWidgetItem( parent ), m_badgeShown( 0 ), m_parentWorkgroup( "" )
 {
   setData( 0, Workgroup, false );
 }
@@ -205,6 +205,7 @@ bool GuiUserItem::updateUser( const User& u )
 
   if( !u.isLocal() )
     m_defaultIcon = icon( 0 );
+  m_badgeShown = 0;
   onTickEvent( 2 );
   return true;
 }
@@ -230,13 +231,14 @@ void GuiUserItem::showUserStatus()
     setForeground( 0, QColor( Qt::black ) );
 }
 
-void GuiUserItem::onTickEvent( int ticks )
+void GuiUserItem::onTickEvent( int )
 {
-  if( !isWorkgroup() && unreadMessages() > 0 )
-  {
-    if( ticks % 2 == 0 )
-      setIcon( 0, IconManager::instance().icon( "beebeep-message.png" ) );
-    else
-      setIcon( 0, m_defaultIcon );
-  }
+  int unread_messages = isWorkgroup() ? 0 : unreadMessages();
+  if( unread_messages == m_badgeShown )
+    return;
+  m_badgeShown = unread_messages;
+  if( unread_messages > 0 )
+    setIcon( 0, Bee::unreadBadgeIcon( m_defaultIcon, unread_messages, Settings::instance().avatarIconSize() ) );
+  else
+    setIcon( 0, m_defaultIcon );
 }

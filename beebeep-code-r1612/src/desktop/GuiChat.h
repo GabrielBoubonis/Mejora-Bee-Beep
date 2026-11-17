@@ -54,6 +54,10 @@ public:
   bool appendChatMessage( const Chat&, const ChatMessage& );
 
   inline QSplitter* chatSplitter() const;
+  inline QAction* sendFileAction() const;
+  QAction* screenshotAction() const;
+  void setEmbeddedMode();
+  void updateThemeIcons();
   void editChatMembers();
 
   void updateOnSendingMessage();
@@ -208,6 +212,7 @@ private:
 // Inline Functions
 inline VNumber GuiChat::chatId() const { return m_chatId; }
 inline QSplitter* GuiChat::chatSplitter() const { return mp_splitter; }
+inline QAction* GuiChat::sendFileAction() const { return mp_actSendFile; }
 #ifdef BEEBEEP_USE_VOICE_CHAT
 inline GuiVoicePlayer* GuiChat::guiVoicePlayer() { return mp_guiVoicePlayer; }
 #endif

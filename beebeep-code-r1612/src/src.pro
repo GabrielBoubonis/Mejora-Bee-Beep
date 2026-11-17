@@ -39,7 +39,7 @@ TEMPLATE = app
 
 TARGET = beebeep
 
-QT += network xml widgets printsupport
+QT += network xml widgets printsupport svg
 
 win32|unix {
   QT += multimedia
@@ -98,7 +98,7 @@ win32|unix {
 
 HEADERS += Interfaces.h
 
-RESOURCES += beebeep.qrc emojis.qrc
+RESOURCES += beebeep.qrc emojis.qrc lucide.qrc
 !contains(DEFINES, BEEBEEP_FOR_RASPBERRY_PI) {
   RESOURCES += emojis2x_1.qrc emojis2x_2.qrc
 }

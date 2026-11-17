@@ -58,6 +58,7 @@ public:
 
   // Embedded mode: the chat is shown on the right side of the main window (WhatsApp desktop like)
   void setEmbedded();
+  void updateThemeIcons();
   inline bool isEmbedded() const;
 
 public slots:
@@ -91,6 +92,7 @@ private slots:
 #ifdef BEEBEEP_USE_VOICE_CHAT
   void showRecordMessageDialog();
 #endif
+  void changeChatFontSize( int delta );
 
 private:
   GuiChat* mp_chat;
@@ -112,6 +114,8 @@ private:
   QToolBar* mp_barTitle;
   QLabel* mp_lblTitleIcon;
   QLabel* mp_lblTitle;
+  QToolButton* mp_tbMore;
+  QString chatSubtitle( const Chat& ) const;
 
 };
 

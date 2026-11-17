@@ -99,10 +99,17 @@ namespace Bee
   // Modern chat theme (WhatsApp-like). Colors depend on Settings::useDarkStyle()
   enum ThemeColor { ThemeWindow, ThemePanel, ThemeInput, ThemeText, ThemeMutedText, ThemeAccent, ThemeAccentHover,
                     ThemeChatBackground, ThemeBubbleOut, ThemeBubbleIn, ThemeBubbleText, ThemeBubbleMeta,
-                    ThemeSystemPill, ThemeSystemText, ThemeBorder, ThemeSelection, ThemeLink, NumThemeColors };
+                    ThemeSystemPill, ThemeSystemText, ThemeBorder, ThemeSelection, ThemeLink,
+                    ThemeAccentText, ThemeHighlight, NumThemeColors };
   QString themeColor( ThemeColor, bool dark_style );
   QString themeColor( ThemeColor );
   QString themeStyleSheet();
+  // Modern line icon (Lucide, ISC license) drawn with the colors of the theme.
+  // color_on is used for the checked state (empty: same color)
+  QIcon themeIcon( const QString& icon_name, ThemeColor color = ThemeText, ThemeColor color_on = NumThemeColors );
+  QIcon themeIconWithColor( const QString& icon_name, const QString& color_name, const QString& color_on_name, const QString& color_disabled_name );
+  QIcon unreadBadgeIcon( const QIcon&, int unread_messages, const QSize& );
+  void setDarkTitleBar( QWidget*, bool );
 
   QColor colorDarkGrey();
   QColor colorGrey();

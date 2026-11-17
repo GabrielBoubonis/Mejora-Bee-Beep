@@ -1604,6 +1604,22 @@ Descargue gratuitamente e instale la versión con esta función desde el sitio w
         <source>Yes and hide this chat</source>
         <translation>Sí y ocultar este chat</translation>
     </message>
+    <message>
+        <source>Send</source>
+        <translation>Enviar</translation>
+    </message>
+    <message>
+        <source>Send message</source>
+        <translation>Enviar mensaje</translation>
+    </message>
+    <message>
+        <source>Record a voice message</source>
+        <translation>Grabar un mensaje de voz</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>Mensaje</translation>
+    </message>
 </context>
 <context>
     <name>GuiChatList</name>
@@ -2346,6 +2362,34 @@ Por favor, elija un nombre diferente.</translation>
         <location filename="../src/desktop/GuiFloatingChat.cpp" line="424"/>
         <source>Window geometry and state saved</source>
         <translation>Dimensiones y estado de la ventana guardado</translation>
+    </message>
+    <message>
+        <source>Message to all the connected users</source>
+        <translation>Mensaje para todos los usuarios conectados</translation>
+    </message>
+    <message>
+        <source>Text size: %1</source>
+        <translation>Tamaño de letra: %1</translation>
+    </message>
+    <message>
+        <source>Smaller text</source>
+        <translation>Letra más chica</translation>
+    </message>
+    <message>
+        <source>Bigger text</source>
+        <translation>Letra más grande</translation>
+    </message>
+    <message>
+        <source>File</source>
+        <translation>Archivo</translation>
+    </message>
+    <message>
+        <source>Screenshot</source>
+        <translation>Captura</translation>
+    </message>
+    <message>
+        <source>More options</source>
+        <translation>Más opciones</translation>
     </message>
 </context>
 <context>
@@ -4624,6 +4668,50 @@ Por favor, elija un nombre diferente.</translation>
         <location filename="../src/desktop/GuiMain.cpp" line="5018"/>
         <source>You must restart %1 to apply these changes.</source>
         <translation>Debe reiniciar %1 para aplicar estos cambios.</translation>
+    </message>
+    <message>
+        <source>Navigation</source>
+        <translation>Navegación</translation>
+    </message>
+    <message>
+        <source>Saved</source>
+        <translation>Guardados</translation>
+    </message>
+    <message>
+        <source>Profile</source>
+        <translation>Mi perfil</translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation>Buscar</translation>
+    </message>
+    <message>
+        <source>Unread</source>
+        <translation>Sin leer</translation>
+    </message>
+    <message>
+        <source>Message</source>
+        <translation>Mensaje</translation>
+    </message>
+    <message>
+        <source>New group</source>
+        <translation>Nuevo grupo</translation>
+    </message>
+    <message>
+        <source>Transfers</source>
+        <translation>Transferencias</translation>
+    </message>
+    <message>
+        <source>Shared files</source>
+        <translation>Compartidos</translation>
+    </message>
+    <message>
+        <source>%1 online</source>
+        <translation>%1 en línea</translation>
+    </message>
+    <message>
+        <source>%1 unread</source>
+        <translation>%1 sin leer</translation>
     </message>
 </context>
 <context>

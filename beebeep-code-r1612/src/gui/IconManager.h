@@ -33,7 +33,7 @@ class IconManager
   static IconManager* mp_instance;
 
 public:
-  inline QIcon icon( const QString& icon_name ) const;
+  QIcon icon( const QString& icon_name ) const;
   QString iconPath( const QString& icon_name ) const;
   inline const QString& defaultSourcePath() const;
   inline const QString& currentSourcePath() const;
@@ -74,7 +74,6 @@ private:
 
 
 // Inline Functions
-inline QIcon IconManager::icon( const QString& icon_name ) const { return QIcon( iconPath( icon_name ) ); }
 inline QString IconManager::defaulIconPath( const QString& icon_name ) const { return QString( "%1/%2" ).arg( m_defaultSourcePath, icon_name ); }
 inline QString IconManager::customIconPath( const QString& icon_name ) const { return QString( "%1/%2" ).arg( m_sourcePath, icon_name ); }
 inline const QString& IconManager::defaultSourcePath() const { return m_defaultSourcePath; }

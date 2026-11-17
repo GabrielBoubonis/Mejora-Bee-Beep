@@ -55,6 +55,7 @@ public:
 
 private:
   QIcon m_defaultIcon;
+  int m_badgeShown;
 
 };
 

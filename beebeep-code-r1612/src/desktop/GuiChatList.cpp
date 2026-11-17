@@ -272,6 +272,8 @@ void GuiChatList::updateBackground()
   QString w_stylesheet = Settings::instance().guiCustomListStyleSheet( Settings::instance().chatListBackgroundColor(),
                                                                        IconManager::instance().iconPath( "chat-list.png" ) );
   mp_twChatList->setStyleSheet( w_stylesheet );
+  mp_pbSettings->setIcon( Bee::themeIcon( "sliders-horizontal", Bee::ThemeMutedText ) );
+  mp_pbClearFilter->setIcon( Bee::themeIcon( "x", Bee::ThemeMutedText ) );
 }
 
 void GuiChatList::showMenuSettings()

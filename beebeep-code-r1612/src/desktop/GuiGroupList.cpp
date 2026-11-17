@@ -306,6 +306,7 @@ void GuiGroupList::updateBackground()
   QString w_stylesheet = Settings::instance().guiCustomListStyleSheet( Settings::instance().groupListBackgroundColor(),
                                                                        IconManager::instance().iconPath( "group-list.png" ) );
   mp_twGroupList->setStyleSheet( w_stylesheet );
+  mp_pbClearFilter->setIcon( Bee::themeIcon( "x", Bee::ThemeMutedText ) );
 }
 
 void GuiGroupList::onTickEvent( int ticks )

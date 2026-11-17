@@ -31,7 +31,7 @@
 
 
 GuiChatItem::GuiChatItem( QTreeWidget* parent )
- : QTreeWidgetItem( parent )
+ : QTreeWidgetItem( parent ), m_badgeShown( 0 )
 {
   setData( 0, ChatId, 0 );
   setData( 0, ChatName, "" );
@@ -148,18 +148,20 @@ bool GuiChatItem::updateItem( const Chat& c )
   }
 
   setIcon( 0, m_defaultIcon );
+  m_badgeShown = 0;
   onTickEvent( 2 );
 
   return true;
 }
 
-void GuiChatItem::onTickEvent( int ticks )
+void GuiChatItem::onTickEvent( int )
 {
-  if( unreadMessages() > 0 )
-  {
-    if( ticks % 2 == 0 )
-      setIcon( 0, IconManager::instance().icon( "beebeep-message.png" ) );
-    else
-      setIcon( 0, m_defaultIcon );
-  }
+  int unread_messages = unreadMessages();
+  if( unread_messages == m_badgeShown )
+    return;
+  m_badgeShown = unread_messages;
+  if( unread_messages > 0 )
+    setIcon( 0, Bee::unreadBadgeIcon( m_defaultIcon, unread_messages, Settings::instance().avatarIconSize() ) );
+  else
+    setIcon( 0, m_defaultIcon );
 }

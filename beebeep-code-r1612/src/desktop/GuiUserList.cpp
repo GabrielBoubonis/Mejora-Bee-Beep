@@ -466,6 +466,8 @@ void GuiUserList::updateBackground()
   QString w_stylesheet = Settings::instance().guiCustomListStyleSheet( Settings::instance().userListBackgroundColor(),
                                                                        IconManager::instance().iconPath( "user-list.png" ) );
   mp_twUsers->setStyleSheet( w_stylesheet );
+  mp_pbSettings->setIcon( Bee::themeIcon( "sliders-horizontal", Bee::ThemeMutedText ) );
+  mp_pbClearFilter->setIcon( Bee::themeIcon( "x", Bee::ThemeMutedText ) );
 }
 
 void GuiUserList::dragEnterEvent( QDragEnterEvent* event )

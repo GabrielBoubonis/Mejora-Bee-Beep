@@ -67,6 +67,7 @@ private:
   void showUserStatus();
 
   QIcon m_defaultIcon;
+  int m_badgeShown;
   QString m_parentWorkgroup;
 
 };

@@ -48,6 +48,7 @@ GuiFloatingChat::GuiFloatingChat( QWidget *parent )
   mp_barTitle = Q_NULLPTR;
   mp_lblTitleIcon = Q_NULLPTR;
   mp_lblTitle = Q_NULLPTR;
+  mp_tbMore = Q_NULLPTR;
   m_mainWindowIcon = IconManager::instance().icon( "chat.png" );
   setMainIcon( false );
   mp_chat = new GuiChat( this );
@@ -172,9 +173,71 @@ void GuiFloatingChat::updateChatTitle( const Chat& c )
 
   if( mp_lblTitle )
   {
-    mp_lblTitle->setText( chat_title );
-    mp_lblTitleIcon->setPixmap( m_mainWindowIcon.pixmap( 36, 36 ) );
+    // Name in big letters and, under it, the status in plain words ("Online", "Away", ...)
+    QString title_name = chat_title;
+    if( c.isPrivate() )
+    {
+      User u = UserManager::instance().findUser( c.privateUserId() );
+      if( u.isValid() )
+        title_name = Bee::userNameToShow( u, false );
+    }
+    QString subtitle = chatSubtitle( c );
+    QFont f = mp_lblTitle->font();
+    int pt = f.pointSize() > 0 ? f.pointSize() : 12;
+    QString html_title = QString( "<span style=\"font-size:%1pt; font-weight:600;\">%2</span>" ).arg( QString::number( pt ), title_name.toHtmlEscaped() );
+    if( !subtitle.isEmpty() )
+      html_title += QString( "<br><span style=\"font-size:%1pt; color:%2;\">%3</span>" )
+                      .arg( QString::number( qMax( 9, pt - 4 ) ), Bee::themeColor( Bee::ThemeMutedText ), subtitle.toHtmlEscaped() );
+    mp_lblTitle->setText( html_title );
+    mp_lblTitleIcon->setPixmap( m_mainWindowIcon.pixmap( 40, 40 ) );
   }
+  if( m_isEmbedded )
+    mp_barMembers->setVisible( !c.isDefault() && !c.isPrivate() ); // in a private chat the header already shows who you are talking to
+}
+
+void GuiFloatingChat::updateThemeIcons()
+{
+  mp_chat->updateThemeIcons();
+  if( !m_isEmbedded )
+    return;
+  mp_dockEmoticons->toggleViewAction()->setIcon( Bee::themeIcon( "smile", Bee::ThemeMutedText, Bee::ThemeText ) );
+  mp_chat->sendFileAction()->setIcon( Bee::themeIcon( "paperclip", Bee::ThemeMutedText ) );
+  if( mp_chat->screenshotAction() )
+    mp_chat->screenshotAction()->setIcon( Bee::themeIcon( "camera", Bee::ThemeMutedText ) );
+  if( mp_tbMore )
+    mp_tbMore->setIcon( Bee::themeIcon( "ellipsis", Bee::ThemeMutedText ) );
+}
+
+QString GuiFloatingChat::chatSubtitle( const Chat& c ) const
+{
+  if( c.isPrivate() )
+  {
+    User u = UserManager::instance().findUser( c.privateUserId() );
+    if( !u.isValid() )
+      return QString();
+    QString status = Bee::userStatusToString( u.status() );
+    if( !status.isEmpty() )
+      status[ 0 ] = status.at( 0 ).toUpper();
+    if( u.status() != User::Offline && !u.statusDescription().isEmpty() )
+      status += QString( " \u00b7 %1" ).arg( u.statusDescription() );
+    return status;
+  }
+  if( c.isDefault() )
+    return tr( "Message to all the connected users" );
+  return QString();
+}
+
+void GuiFloatingChat::changeChatFontSize( int delta )
+{
+  QFont f = Settings::instance().chatFont();
+  int pt = f.pointSize() > 0 ? f.pointSize() : 12;
+  int new_pt = qBound( 9, pt + delta, 28 );
+  if( new_pt == pt )
+    return;
+  f.setPointSize( new_pt );
+  Settings::instance().setChatFont( f, true );
+  emit updateChatFontRequest();
+  showStatusMessage( tr( "Text size: %1" ).arg( new_pt ), 2000 );
 }
 
 void GuiFloatingChat::setEmbedded()
@@ -198,13 +261,75 @@ void GuiFloatingChat::setEmbedded()
   mp_lblTitle->setObjectName( "GuiEmbeddedChatTitle" );
   QFont title_font = mp_lblTitle->font();
   title_font.setPointSize( title_font.pointSize() + 3 );
-  title_font.setBold( true );
   mp_lblTitle->setFont( title_font );
-  mp_lblTitle->setTextFormat( Qt::PlainText );
-  mp_lblTitle->setContentsMargins( 6, 0, 6, 0 );
+  mp_lblTitle->setTextFormat( Qt::RichText );
+  mp_lblTitle->setContentsMargins( 8, 0, 8, 0 );
   mp_barTitle->addWidget( mp_lblTitleIcon );
   mp_barTitle->addWidget( mp_lblTitle );
+
+  // Text size always at hand: A- / A+ (the change applies to every chat)
+  QWidget* title_spacer = new QWidget( mp_barTitle );
+  title_spacer->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Preferred );
+  mp_barTitle->addWidget( title_spacer );
+  QToolButton* tb_smaller = new QToolButton( mp_barTitle );
+  tb_smaller->setObjectName( "GuiFontSizeButton" );
+  tb_smaller->setText( QString::fromUtf8( "A\xe2\x88\x92" ) );
+  tb_smaller->setToolTip( tr( "Smaller text" ) );
+  tb_smaller->setAccessibleName( tr( "Smaller text" ) );
+  tb_smaller->setCursor( Qt::PointingHandCursor );
+  connect( tb_smaller, &QToolButton::clicked, this, [this]() { changeChatFontSize( -1 ); } );
+  mp_barTitle->addWidget( tb_smaller );
+  QToolButton* tb_bigger = new QToolButton( mp_barTitle );
+  tb_bigger->setObjectName( "GuiFontSizeButton" );
+  tb_bigger->setText( QLatin1String( "A+" ) );
+  QFont bigger_font = tb_bigger->font();
+  bigger_font.setPointSize( bigger_font.pointSize() + 3 );
+  tb_bigger->setFont( bigger_font );
+  tb_bigger->setToolTip( tr( "Bigger text" ) );
+  tb_bigger->setAccessibleName( tr( "Bigger text" ) );
+  tb_bigger->setCursor( Qt::PointingHandCursor );
+  connect( tb_bigger, &QToolButton::clicked, this, [this]() { changeChatFontSize( 1 ); } );
+  mp_barTitle->addWidget( tb_bigger );
   addToolBar( Qt::TopToolBarArea, mp_barTitle );
+
+  // Simple chat tool bar: the everyday actions with their name, everything else under "More options"
+  mp_chat->setEmbeddedMode();
+  QList<QAction*> primary_actions;
+  QAction* act_emoticons = mp_dockEmoticons->toggleViewAction();
+  act_emoticons->setIconText( tr( "Emoticons" ) );
+  primary_actions.append( act_emoticons );
+  QAction* act_send_file = mp_chat->sendFileAction();
+  act_send_file->setIconText( tr( "File" ) );
+  primary_actions.append( act_send_file );
+  QAction* act_screenshot = mp_chat->screenshotAction();
+  if( act_screenshot )
+  {
+    act_screenshot->setIconText( tr( "Screenshot" ) );
+    primary_actions.append( act_screenshot );
+  }
+  QMenu* menu_more = new QMenu( this );
+  foreach( QAction* act, mp_barChat->actions() )
+  {
+    if( primary_actions.contains( act ) )
+      continue;
+    mp_barChat->removeAction( act );
+    if( act->isSeparator() || act == mp_actSaveWindowGeometry )
+      continue;
+    menu_more->addAction( act );
+  }
+  QToolButton* tb_more = new QToolButton( mp_barChat );
+  mp_tbMore = tb_more;
+  tb_more->setText( tr( "More options" ) );
+  tb_more->setAccessibleName( tr( "More options" ) );
+  tb_more->setToolButtonStyle( Qt::ToolButtonTextBesideIcon );
+  tb_more->setPopupMode( QToolButton::InstantPopup );
+  tb_more->setMenu( menu_more );
+  tb_more->setCursor( Qt::PointingHandCursor );
+  mp_barChat->addWidget( tb_more );
+  mp_barChat->setToolButtonStyle( Qt::ToolButtonTextBesideIcon );
+  mp_barChat->setMovable( false );
+  mp_barChat->setIconSize( QSize( 22, 22 ) );
+  updateThemeIcons();
 
   // Geometry is managed by the main window
   mp_actSaveWindowGeometry->setVisible( false );
@@ -260,14 +385,14 @@ void GuiFloatingChat::updateChatMember( const Chat& c, const User& u )
 
 void GuiFloatingChat::updateChatMembers( const Chat& c )
 {
-  mp_barMembers->setVisible( !c.isDefault() );
+  mp_barMembers->setVisible( !c.isDefault() && !(m_isEmbedded && c.isPrivate()) ); // embedded: the header already shows who you are talking to
   mp_barMembers->setEnabled( !c.isDefault() );
 
   if( mp_barMembers->isEnabled() )
   {
     mp_barMembers->clear();
     mp_barMembers->setIconSize( Settings::instance().avatarIconSize() );
-    mp_barMembers->setVisible( true );
+    mp_barMembers->setVisible( !(m_isEmbedded && c.isPrivate()) );
 
     UserList ul = UserManager::instance().userList().fromUsersId( c.usersId() );
     foreach( User u, ul.toList() )

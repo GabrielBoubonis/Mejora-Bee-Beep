@@ -85,9 +85,20 @@ GuiChat::GuiChat( QWidget *parent )
 
   mp_teChat->setObjectName( "GuiChatViewer" );
   GuiChatBubblePainter::install( mp_teChat );
-  mp_pbSend->setIconSize( QSize( 22, 22 ) );
+  // Big, labelled send button: easy to find and to click (also for screen readers)
+  mp_pbSend->setIconSize( QSize( 20, 20 ) );
   mp_pbSend->setFlat( false );
   mp_pbSend->setCursor( Qt::PointingHandCursor );
+  mp_pbSend->setText( tr( "Send" ) );
+  mp_pbSend->setAccessibleName( tr( "Send message" ) );
+  mp_pbSend->setMinimumSize( 104, 40 );
+  mp_pbSend->setMaximumSize( 180, 40 );
+  mp_pbRecordVoiceMessage->setMinimumSize( 40, 40 );
+  mp_pbRecordVoiceMessage->setMaximumSize( 40, 40 );
+  mp_pbRecordVoiceMessage->setIconSize( QSize( 24, 24 ) );
+  mp_pbRecordVoiceMessage->setCursor( Qt::PointingHandCursor );
+  mp_pbRecordVoiceMessage->setAccessibleName( tr( "Record a voice message" ) );
+  mp_teMessage->setAccessibleName( tr( "Message" ) );
   m_defaultChatPalette = mp_teChat->palette();
   m_defaultChatPalette.setColor( QPalette::Highlight, Qt::yellow );
   m_defaultChatPalette.setColor( QPalette::HighlightedText, Qt::black );
@@ -227,6 +238,28 @@ void GuiChat::setupToolBar( QToolBar* chat_bar )
   act->setSeparator( true );
   mp_teMessage->addActionToContextMenu( act );
   mp_teMessage->addActionToContextMenu( mp_actRestoreDefaultFont );
+}
+
+QAction* GuiChat::screenshotAction() const
+{
+#ifdef BEEBEEP_USE_SHAREDESKTOP
+  return mp_actScreenshot;
+#else
+  return Q_NULLPTR;
+#endif
+}
+
+void GuiChat::updateThemeIcons()
+{
+  mp_pbSend->setIcon( Bee::themeIcon( "send-horizontal", Bee::ThemeAccentText ) );
+  mp_pbRecordVoiceMessage->setIcon( Bee::themeIcon( "mic", Bee::ThemeMutedText ) );
+}
+
+void GuiChat::setEmbeddedMode()
+{
+  // Inside the main window the chat is never closed or minimized after sending
+  mp_cbSendAndClose->setChecked( false );
+  mp_cbSendAndClose->hide();
 }
 
 void GuiChat::updateOnSendingMessage()
@@ -507,7 +540,7 @@ void GuiChat::sendMessage()
   mp_teMessage->addMessageToHistory();
   emit newMessage( m_chatId, msg, false );
   mp_teMessage->clearMessage();
-  if( mp_cbSendAndClose->isChecked() )
+  if( !mp_cbSendAndClose->isHidden() && mp_cbSendAndClose->isChecked() )
   {
     if( Settings::instance().chatOnSendingMessage() == Settings::CloseChatOnSendingMessage )
       QMetaObject::invokeMethod( this, "closeRequest", Qt::QueuedConnection );

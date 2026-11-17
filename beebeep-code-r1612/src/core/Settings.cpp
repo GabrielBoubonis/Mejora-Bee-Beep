@@ -1262,7 +1262,7 @@ void Settings::load()
     m_floatingChatState = "";
     m_floatingChatSplitterState = "";
     m_mainBarIconSize = QSize( 24, 24 );
-    m_avatarIconSize = QSize( 28, 28 );
+    m_avatarIconSize = QSize( 36, 36 );
     m_previewFileDialogGeometry = "";
     m_createMessageGeometry = "";
     m_fileSharingGeometry = "";
@@ -1465,7 +1465,7 @@ void Settings::loadCommonSettings( QSettings* user_ini )
 
   beginCommonGroup( system_rc, user_ini, "Gui" );
   m_mainBarIconSize = commonValue( system_rc, user_ini, "MainBarIconSize", QSize( 24, 24 ) ).toSize();
-  m_avatarIconSize = commonValue( system_rc, user_ini, "AvatarIconSize", QSize( 28, 28 ) ).toSize();
+  m_avatarIconSize = commonValue( system_rc, user_ini, "AvatarIconSize", QSize( 36, 36 ) ).toSize();
   m_resetGeometryAtStartup = commonValue( system_rc, user_ini, "ResetWindowGeometryAtStartup", m_resetGeometryAtStartup ).toBool();
   m_saveGeometryOnExit = commonValue( system_rc, user_ini, "SaveGeometryOnExit", m_saveGeometryOnExit ).toBool();
   m_language = commonValue( system_rc, user_ini, "Language", QLocale::system().name() ).toString();
@@ -1555,7 +1555,11 @@ void Settings::loadCommonSettings( QSettings* user_ini )
     qDebug() << "Applying the modern theme (from version" << m_themeVersion << "to" << currentThemeVersion() << ")";
     if( m_themeVersion < 1 )
       resetAllColors(); // first start with the modern (WhatsApp-like) colors
-    if( m_themeVersion < 2 )
+    if( m_themeVersion >= 1 && m_themeVersion < 3 )
+      resetAllColors(); // "Miel & Pizarra" colors
+    if( m_themeVersion < 3 && m_avatarIconSize.width() < 36 )
+      m_avatarIconSize = QSize( 36, 36 ); // bigger avatars: easier to recognize and to click
+    if( m_themeVersion < 3 )
       setChatFont( defaultChatFont(), true ); // bigger and modern font in the chat bubbles
     m_themeVersion = currentThemeVersion();
   }
@@ -2510,12 +2514,9 @@ QString Settings::simpleDecrypt( const QString& text_to_decrypt )
 
 QString Settings::guiCustomListStyleSheet( const QString& background_color, const QString& background_image_path ) const
 {
-  return QString( "#GuiCustomList { background: %1 url(%2);"
-                  "background-repeat: no-repeat;"
-                  "background-position: bottom center;"
-                  "background-attachment: fixed;"
-                  "padding-bottom: 32px;"
-                  "}" ).arg( background_color, background_image_path );
+  // Clean list (the old watermark picture at the bottom is not shown any more)
+  Q_UNUSED( background_image_path );
+  return QString( "#GuiCustomList { background: %1; font-size: 11pt; padding: 4px; }" ).arg( background_color );
 }
 
 QString Settings::autoresponderName() const

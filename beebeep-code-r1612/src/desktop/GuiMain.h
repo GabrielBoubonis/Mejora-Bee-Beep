@@ -274,6 +274,9 @@ private:
   void updateEmoticons();
   void updateNewMessageAction();
   void updateTabTitles();
+  void createNavigationBar();
+  void updateNavigationBar();
+  void updateThemeIcons();
   QString tabToolTip( int );
   void showRestartConnectionAlertMessage();
   void showRestartApplicationAlertMessage();
@@ -289,6 +292,10 @@ private:
   QSplitter* mp_mainSplitter;
   QStackedWidget* mp_stackChats;
   QLabel* mp_lblChatPlaceholder;
+  QToolBar* mp_barNav;
+  QList<QAction*> m_navActions;
+  QList<QWidget*> m_navWidgets;
+  QStringList m_navLabels;
   GuiFileTransfer* mp_fileTransfer;
   GuiUserList* mp_userList;
   GuiChatList* mp_chatList;

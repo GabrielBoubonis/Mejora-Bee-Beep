@@ -82,9 +82,27 @@
 #endif
 
 
+class DarkTitleBarFilter : public QObject
+{
+public:
+  DarkTitleBarFilter( QObject* parent ) : QObject( parent ) {}
+protected:
+  bool eventFilter( QObject* obj, QEvent* e ) override
+  {
+    if( e->type() == QEvent::Show && obj->isWidgetType() )
+    {
+      QWidget* w = static_cast<QWidget*>( obj );
+      if( w->isWindow() && w->windowType() != Qt::Popup && w->windowType() != Qt::ToolTip )
+        Bee::setDarkTitleBar( w, Settings::instance().useDarkStyle() );
+    }
+    return QObject::eventFilter( obj, e );
+  }
+};
+
 GuiMain::GuiMain( QWidget *parent )
  : QMainWindow( parent ), m_floatingChats()
 {
+  qApp->installEventFilter( new DarkTitleBarFilter( this ) );
   setObjectName( "GuiMainWindow" );
   setWindowIcon( IconManager::instance().icon( "beebeep.png" ) );
 
@@ -97,6 +115,7 @@ GuiMain::GuiMain( QWidget *parent )
   mp_mainSplitter = Q_NULLPTR;
   mp_stackChats = Q_NULLPTR;
   mp_lblChatPlaceholder = Q_NULLPTR;
+  mp_barNav = Q_NULLPTR;
   if( Settings::instance().chatsInMainWindow() )
   {
     // WhatsApp desktop like layout: users and chats on the left, the open conversation on the right
@@ -364,6 +383,92 @@ void GuiMain::updateTabTitles()
   tab_index = mp_tabMain->indexOf( mp_savedChatList );
   current_value = ChatManager::instance().constHistoryMap().size();
   mp_tabMain->setTabText( tab_index, current_value > 0 ? QString::number( current_value ) : "" );
+
+  updateNavigationBar();
+}
+
+void GuiMain::createNavigationBar()
+{
+  // Navigation rail (like the modern desktop apps): big icons with their name, always visible.
+  // It replaces the small tabs without text at the bottom of the list.
+  mp_barNav = new QToolBar( tr( "Navigation" ), this );
+  mp_barNav->setObjectName( "GuiNavigationBar" );
+  mp_barNav->setMovable( false );
+  mp_barNav->setFloatable( false );
+  mp_barNav->toggleViewAction()->setVisible( false );
+  mp_barNav->setToolButtonStyle( Qt::ToolButtonTextUnderIcon );
+  mp_barNav->setIconSize( QSize( 30, 30 ) );
+  mp_barNav->setOrientation( Qt::Vertical );
+  addToolBar( Qt::LeftToolBarArea, mp_barNav );
+
+  QActionGroup* nav_group = new QActionGroup( this );
+  nav_group->setExclusive( true );
+
+  QList<QWidget*> widgets;
+  QStringList labels;
+  QStringList icons;
+  widgets << mp_userList << mp_chatList << mp_groupList << mp_savedChatList << mp_home;
+  labels << tr( "Users" ) << tr( "Chats" ) << tr( "Groups" ) << tr( "Saved" ) << tr( "Activities" );
+  icons << "user-list.png" << "chat-list.png" << "group.png" << "saved-chat-list.png" << "activities.png";
+
+  for( int i = 0; i < widgets.size(); i++ )
+  {
+    QWidget* w = widgets.at( i );
+    if( mp_tabMain->indexOf( w ) < 0 )
+      continue;
+    QAction* act = mp_barNav->addAction( IconManager::instance().icon( icons.at( i ) ), labels.at( i ) );
+    act->setCheckable( true );
+    nav_group->addAction( act );
+    connect( act, &QAction::triggered, this, [this, w]() { mp_tabMain->setCurrentWidget( w ); } );
+    m_navActions.append( act );
+    m_navWidgets.append( w );
+    m_navLabels.append( labels.at( i ) );
+  }
+
+  mp_tabMain->tabBar()->hide();
+  updateNavigationBar();
+}
+
+void GuiMain::updateNavigationBar()
+{
+  if( !mp_barNav )
+    return;
+  for( int i = 0; i < m_navActions.size(); i++ )
+  {
+    int tab_index = mp_tabMain->indexOf( m_navWidgets.at( i ) );
+    QAction* act = m_navActions.at( i );
+    act->setVisible( tab_index >= 0 );
+    if( tab_index < 0 )
+      continue;
+    QWidget* w = m_navWidgets.at( i );
+    QString counter;
+    int value = 0;
+    if( w == mp_userList )
+    {
+      value = beeCore->connectedUsers();
+      if( value > 0 )
+        counter = tr( "%1 online" ).arg( value );
+    }
+    else if( w == mp_chatList )
+    {
+      value = ChatManager::instance().unreadMessages();
+      if( value > 0 )
+        counter = tr( "%1 unread" ).arg( value );
+    }
+    else if( w == mp_home )
+    {
+      value = m_unreadActivities;
+      if( value > 0 )
+        counter = tr( "%1 unread" ).arg( value );
+    }
+    QString act_text = counter.isEmpty() ? m_navLabels.at( i ) : QString( "%1\n%2" ).arg( m_navLabels.at( i ), counter );
+    if( act->text() != act_text )
+      act->setText( act_text );
+    QString act_tooltip = mp_tabMain->tabToolTip( tab_index );
+    if( act->toolTip() != act_tooltip )
+      act->setToolTip( act_tooltip );
+    act->setChecked( tab_index == mp_tabMain->currentIndex() );
+  }
 }
 
 void GuiMain::keyPressEvent( QKeyEvent* e )
@@ -1591,6 +1696,20 @@ void GuiMain::createToolAndMenuBars()
   label_version->setToolTip( label_tooltip );
   menuBar()->setCornerWidget( label_version );
 
+  if( mp_mainSplitter )
+  {
+    // Every button says what it does (short label under the icon)
+    mp_barMain->setToolButtonStyle( Qt::ToolButtonTextUnderIcon );
+    mp_barMain->setMovable( false );
+    mp_menuStatus->menuAction()->setIconText( tr( "Status" ) );
+    mp_actVCard->setIconText( tr( "Profile" ) );
+    mp_actBroadcast->setIconText( tr( "Search" ) );
+    mp_actViewNewMessage->setIconText( tr( "Unread" ) );
+    mp_actCreateMessage->setIconText( tr( "Message" ) );
+    mp_actCreateGroupChat->setIconText( tr( "New group" ) );
+    mp_actViewFileTransfer->setIconText( tr( "Transfers" ) );
+    mp_actViewFileSharing->setIconText( tr( "Shared files" ) );
+  }
   mp_barMain->addAction( mp_menuStatus->menuAction() );
   mp_barMain->addAction( mp_actVCard );
   mp_barMain->addSeparator();
@@ -1602,6 +1721,48 @@ void GuiMain::createToolAndMenuBars()
   mp_barMain->addSeparator();
   mp_barMain->addAction( mp_actViewFileTransfer );
   mp_barMain->addAction( mp_actViewFileSharing );
+
+  if( mp_mainSplitter )
+  {
+    // The status button opens its menu with a simple click (no small arrow to find)
+    QToolButton* tb_status = qobject_cast<QToolButton*>( mp_barMain->widgetForAction( mp_menuStatus->menuAction() ) );
+    if( tb_status )
+      tb_status->setPopupMode( QToolButton::InstantPopup );
+    updateThemeIcons();
+  }
+}
+
+void GuiMain::updateThemeIcons()
+{
+  if( !mp_mainSplitter )
+    return;
+  mp_actVCard->setIcon( Bee::themeIcon( "user-round-pen" ) );
+  mp_actBroadcast->setIcon( Bee::themeIcon( "search" ) );
+  mp_actViewNewMessage->setIcon( Bee::themeIcon( "mail" ) );
+  mp_actCreateMessage->setIcon( Bee::themeIcon( "square-pen" ) );
+  mp_actCreateGroupChat->setIcon( Bee::themeIcon( "user-plus" ) );
+  mp_actViewFileTransfer->setIcon( Bee::themeIcon( "arrow-down-up" ) );
+  mp_actViewFileSharing->setIcon( Bee::themeIcon( "folder-open" ) );
+
+  QStringList nav_icons;
+  foreach( QWidget* w, m_navWidgets )
+  {
+    if( w == mp_userList )
+      nav_icons << "users";
+    else if( w == mp_chatList )
+      nav_icons << "message-circle";
+    else if( w == mp_groupList )
+      nav_icons << "users-round";
+    else if( w == mp_savedChatList )
+      nav_icons << "archive";
+    else
+      nav_icons << "bell";
+  }
+  for( int i = 0; i < m_navActions.size(); i++ )
+    m_navActions.at( i )->setIcon( Bee::themeIcon( nav_icons.at( i ), Bee::ThemeMutedText, Bee::ThemeText ) );
+
+  foreach( GuiFloatingChat* fl_chat, m_floatingChats )
+    fl_chat->updateThemeIcons();
 }
 
 void GuiMain::createMainWidgets()
@@ -1635,6 +1796,9 @@ void GuiMain::createMainWidgets()
   tab_index = mp_tabMain->addTab( mp_savedChatList, IconManager::instance().icon( "saved-chat-list.png" ), "" );
   mp_tabMain->setTabToolTip( tab_index, tr( "Saved chats" ) );
   mp_savedChatList->setMainToolTip( QString( "%1\n(%2)" ).arg( mp_tabMain->tabToolTip( tab_index ), tooltip_right_button ) );
+
+  if( mp_mainSplitter )
+    createNavigationBar();
 
 #ifdef BEEBEEP_USE_WEBENGINE
   mp_webView = new GuiWebView();
@@ -4301,6 +4465,7 @@ GuiFloatingChat* GuiMain::createFloatingChat( const Chat& c )
     if( mp_stackChats )
     {
       fl_chat->setEmbedded();
+      fl_chat->updateThemeIcons();
       mp_stackChats->addWidget( fl_chat );
     }
     else
@@ -4604,7 +4769,28 @@ void GuiMain::onNetworkInterfaceUp()
 void GuiMain::onTickEvent( int ticks )
 {
   int chat_tab_index = mp_tabMain->indexOf( mp_chatList );
-  if( mp_actViewNewMessage->isEnabled() )
+  static bool unread_icons_blinking = false;
+  if( mp_mainSplitter )
+  {
+    updateNavigationBar();
+    if( mp_actViewNewMessage->isEnabled() )
+    {
+      unread_icons_blinking = true;
+      bool honey = ticks % 2 == 0;
+      mp_actViewNewMessage->setIcon( Bee::themeIcon( "mail", honey ? Bee::ThemeAccentHover : Bee::ThemeText ) );
+      int nav_index = m_navWidgets.indexOf( mp_chatList );
+      if( nav_index >= 0 )
+        m_navActions.at( nav_index )->setIcon( Bee::themeIcon( "message-circle", honey ? Bee::ThemeAccentHover : Bee::ThemeMutedText, honey ? Bee::ThemeAccentHover : Bee::ThemeText ) );
+      setWindowIcon( honey ? IconManager::instance().icon( "beebeep-message.png" ) : IconManager::instance().icon( "beebeep.png" ) );
+    }
+    else if( unread_icons_blinking )
+    {
+      unread_icons_blinking = false;
+      updateThemeIcons();
+      setWindowIcon( IconManager::instance().icon( "beebeep.png" ) );
+    }
+  }
+  else if( mp_actViewNewMessage->isEnabled() )
   {
     QIcon new_message_blinking_icon = IconManager::instance().icon( "beebeep-message.png" );
     mp_actViewNewMessage->setIcon( ticks % 2 == 0 ? new_message_blinking_icon : Bee::convertToGrayScale( new_message_blinking_icon, Settings::instance().mainBarIconSize() ) );
@@ -4980,6 +5166,8 @@ void GuiMain::onMainTabChanged( int tab_index )
 
   if( m_changeTabToUserListOnFirstConnected )
     m_changeTabToUserListOnFirstConnected = false;
+
+  updateNavigationBar();
 }
 
 void GuiMain::setFileTransferEnabled( bool enable )
@@ -5191,7 +5379,16 @@ void GuiMain::updateChatFont()
     return;
 
   foreach( GuiFloatingChat* fl_chat, m_floatingChats )
+  {
     fl_chat->guiChat()->setChatFont( Settings::instance().chatFont() );
+    if( Settings::instance().chatUseBubbles() )
+    {
+      // time and notes in the bubbles are sized from the chat font: draw them again
+      Chat c = ChatManager::instance().chat( fl_chat->guiChat()->chatId() );
+      if( c.isValid() )
+        fl_chat->setChat( c );
+    }
+  }
 }
 
 void GuiMain::updateChatColors()
@@ -5463,9 +5660,16 @@ void GuiMain::loadStyle()
       beeApp->resetPalette();
   }
 
+  foreach( QWidget* w, QApplication::topLevelWidgets() )
+  {
+    if( w->isVisible() && w->windowType() != Qt::Popup && w->windowType() != Qt::ToolTip )
+      Bee::setDarkTitleBar( w, Settings::instance().useDarkStyle() );
+  }
+
   // Modern look (flat toolbars, rounded inputs, thin scrollbars, WhatsApp-like composer)
   if( m_useFusionStyle )
     beeApp->setStyleSheet( Bee::themeStyleSheet() );
+  updateThemeIcons();
 
   setMinimumWidthForStyle();
 
