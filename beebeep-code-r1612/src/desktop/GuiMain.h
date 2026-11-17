@@ -45,6 +45,7 @@ class GuiSavedChat;
 class GuiSavedChatList;
 class GuiScreenShot;
 class GuiSystemTray;
+class GuiMessageNotification;
 class GuiFileTransfer;
 class GuiUserList;
 class User;
@@ -123,6 +124,7 @@ private slots:
   bool showWizard();
   void trayIconClicked( QSystemTrayIcon::ActivationReason );
   void trayMessageClicked();
+  void openChatFromNotification( VNumber );
   void addToShare( const QString& );
   void removeFromShare( const QString& );
   void openUrl( const QUrl& );
@@ -390,6 +392,7 @@ private:
   QDockWidget* mp_dockFileTransfers;
 
   GuiSystemTray* mp_trayIcon;
+  GuiMessageNotification* mp_messageNotification;
   int m_lastUserStatus;
 
   bool m_forceShutdown;

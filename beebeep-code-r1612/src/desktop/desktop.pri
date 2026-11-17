@@ -27,6 +27,7 @@ HEADERS += desktop/BeeApplication.h \
   desktop/GuiIconProvider.h \
   desktop/GuiLanguage.h \
   desktop/GuiLog.h \
+  desktop/GuiMessageNotification.h \
   desktop/GuiMain.h \
   desktop/GuiMessageEdit.h \
   desktop/GuiNetwork.h \
@@ -77,6 +78,7 @@ SOURCES +=  desktop/BeeApplication.cpp \
   desktop/GuiIconProvider.cpp \
   desktop/GuiLanguage.cpp \
   desktop/GuiLog.cpp \
+  desktop/GuiMessageNotification.cpp \
   desktop/GuiMain.cpp \
   desktop/GuiMessageEdit.cpp \
   desktop/GuiNetwork.cpp \

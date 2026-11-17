@@ -4713,6 +4713,26 @@ Por favor, elija un nombre diferente.</translation>
         <source>%1 unread</source>
         <translation>%1 sin leer</translation>
     </message>
+    <message>
+        <source>Message to everybody</source>
+        <translation>Mensaje para todos</translation>
+    </message>
+    <message>
+        <source>In the group %1</source>
+        <translation>En el grupo %1</translation>
+    </message>
+    <message>
+        <source>Private message</source>
+        <translation>Mensaje privado</translation>
+    </message>
+    <message>
+        <source>Sent you a message</source>
+        <translation>Te envió un mensaje</translation>
+    </message>
+    <message>
+        <source>IMPORTANT:</source>
+        <translation>IMPORTANTE:</translation>
+    </message>
 </context>
 <context>
     <name>GuiMessageEdit</name>
@@ -7585,6 +7605,25 @@ Por favor, elija un nombre diferente.</translation>
         <location filename="../src/utils/BeeUtils.cpp" line="75"/>
         <source>status error</source>
         <translation>error de estado</translation>
+    </message>
+</context>
+<context>
+    <name>GuiMessageNotification</name>
+    <message>
+        <source>New message</source>
+        <translation>Mensaje nuevo</translation>
+    </message>
+    <message>
+        <source>Reply</source>
+        <translation>Responder</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation>Cerrar</translation>
+    </message>
+    <message>
+        <source>%1 new messages</source>
+        <translation>%1 mensajes nuevos</translation>
     </message>
 </context>
 </TS>

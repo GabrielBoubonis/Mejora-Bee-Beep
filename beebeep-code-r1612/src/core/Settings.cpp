@@ -1561,6 +1561,11 @@ void Settings::loadCommonSettings( QSettings* user_ini )
       m_avatarIconSize = QSize( 36, 36 ); // bigger avatars: easier to recognize and to click
     if( m_themeVersion < 3 )
       setChatFont( defaultChatFont(), true ); // bigger and modern font in the chat bubbles
+    if( m_themeVersion < 4 )
+    {
+      m_showNotificationOnTray = true;  // notification of the new messages with the preview of the text
+      m_showChatMessageOnTray = true;
+    }
     m_themeVersion = currentThemeVersion();
   }
   m_showUsersInWorkgroups = commonValue( system_rc, user_ini, "ShowUsersInWorkgroups", false ).toBool();

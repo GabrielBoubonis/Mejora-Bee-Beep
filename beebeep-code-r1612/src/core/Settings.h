@@ -639,7 +639,7 @@ public:
   inline void setChatsInMainWindow( bool );
   inline bool chatsInMainWindow() const;
   inline bool chatUseBubbles() const;
-  inline int currentThemeVersion() const { return 3; }
+  inline int currentThemeVersion() const { return 4; }
   QFont defaultChatFont() const;
 
   QString defaultListBackgroundColor() const;

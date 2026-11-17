@@ -27,6 +27,7 @@
 #include "BeeUtils.h"
 #include "ChatManager.h"
 #include "GuiChatBubblePainter.h"
+#include "GuiMessageNotification.h"
 #include "EmoticonManager.h"
 #include "FileDialog.h"
 #include "FileShare.h"
@@ -237,6 +238,11 @@ GuiMain::GuiMain( QWidget *parent )
 
   connect( mp_trayIcon, SIGNAL( activated( QSystemTrayIcon::ActivationReason ) ), this, SLOT( trayIconClicked( QSystemTrayIcon::ActivationReason ) ) );
   connect( mp_trayIcon, SIGNAL( messageClicked() ), this, SLOT( trayMessageClicked() ) );
+
+  // own notification of the new messages (no parent: it must be visible also when the main window is minimized)
+  mp_messageNotification = new GuiMessageNotification( Q_NULLPTR );
+  connect( mp_messageNotification, SIGNAL( openChatRequest( VNumber ) ), this, SLOT( openChatFromNotification( VNumber ) ) );
+  connect( this, SIGNAL( destroyed() ), mp_messageNotification, SLOT( deleteLater() ) );
 
   connect( mp_savedChatList, SIGNAL( savedChatSelected( const QString& ) ), this, SLOT( showSavedChatSelected( const QString& ) ) );
   connect( mp_savedChatList, SIGNAL( savedChatRemoved( const QString& ) ), this, SLOT( removeSavedChat( const QString& ) ) );
@@ -603,6 +609,7 @@ void GuiMain::closeEvent( QCloseEvent* e )
     mp_menuUsersSettings->close();
 
   mp_trayIcon->hide();
+  mp_messageNotification->close();
 
   if( mp_dockFileTransfers->isFloating() && mp_dockFileTransfers->isVisible() )
     mp_dockFileTransfers->hide();
@@ -2628,6 +2635,26 @@ void GuiMain::showAlertForMessage( const Chat& c, const ChatMessage& cm )
   if( show_message_in_tray )
   {
     User u = UserManager::instance().findUser( cm.userId() );
+
+    // BeeBEEP minimized or behind another program: notification with the preview of the message
+    // (it does not depend on the notifications of Windows, that can be hidden by "Do not disturb")
+    if( u.isValid() && !u.isLocal() && !cm.isFromSystem() && Settings::instance().showNotificationOnTray() && !QApplication::activeWindow() )
+    {
+      QString chat_title;
+      if( c.isDefault() )
+        chat_title = tr( "Message to everybody" );
+      else if( c.isGroup() )
+        chat_title = tr( "In the group %1" ).arg( c.name() );
+      else
+        chat_title = tr( "Private message" );
+      QString preview_text = Settings::instance().showChatMessageOnTray() ? Bee::removeHtmlTags( cm.message() ) : tr( "Sent you a message" );
+      if( cm.isImportant() )
+        preview_text.prepend( QString( "%1 " ).arg( tr( "IMPORTANT:" ) ) );
+      mp_messageNotification->showMessage( c.id(), u, chat_title, preview_text, c.unreadMessages() );
+      mp_trayIcon->setUnreadMessages( c.id(), qMax( 1, c.unreadMessages() ) );
+      return;
+    }
+
     QString msg;
     bool long_time_show = false;
 
@@ -3411,6 +3438,25 @@ void GuiMain::trayIconClicked( QSystemTrayIcon::ActivationReason ar )
       mp_menuTrayIcon->popup( QCursor::pos() );
   }
 #endif
+}
+
+void GuiMain::openChatFromNotification( VNumber chat_id )
+{
+  // from the notification: BeeBEEP comes back in front with the conversation open, ready to reply
+  if( isMinimized() || !isVisible() )
+    showNormal();
+  QTimer::singleShot( 0, this, SLOT( raiseOnTop() ) );
+  if( chat_id != ID_INVALID && ChatManager::instance().chat( chat_id ).isValid() )
+  {
+    showChat( chat_id );
+    GuiFloatingChat* fl_chat = floatingChat( chat_id );
+    if( fl_chat )
+    {
+      if( !fl_chat->chatIsVisible() )
+        QTimer::singleShot( 0, fl_chat, SLOT( raiseOnTop() ) );
+      fl_chat->guiChat()->ensureLastMessageVisible();
+    }
+  }
 }
 
 void GuiMain::trayMessageClicked()
