@@ -129,6 +129,7 @@ void Chat::addMessage( const ChatMessage& cm )
   if( cm.type() == ChatMessage::Chat )
   {
     m_unsavedMessages = true;
+    m_lastMessageTimestamp = QDateTime::currentDateTime(); // sent or received: this conversation is the most recent
 
     if( cm.isFromLocalUser() )
     {

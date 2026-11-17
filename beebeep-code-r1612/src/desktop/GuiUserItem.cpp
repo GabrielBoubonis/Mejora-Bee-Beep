@@ -96,6 +96,23 @@ bool GuiUserItem::operator<( const QTreeWidgetItem& item ) const
     }
   }
 
+  int sorting_mode = Settings::instance().userSortingMode();
+  if( sorting_mode == 0 || sorting_mode == 3 )
+  {
+    // who wrote last (or to whom you wrote last) goes on top
+    QDateTime user_timestamp = data( 0, GuiUserItem::LastMessageTimestamp ).toDateTime();
+    QDateTime other_timestamp = item.data( 0, GuiUserItem::LastMessageTimestamp ).toDateTime();
+    if( user_timestamp.isValid() || other_timestamp.isValid() )
+    {
+      if( !other_timestamp.isValid() )
+        return true;
+      if( !user_timestamp.isValid() )
+        return false;
+      if( user_timestamp != other_timestamp )
+        return user_timestamp > other_timestamp;
+    }
+  }
+
   if( Settings::instance().userSortingMode() == 1 ) // by name
   {
     return user_name < other_name;

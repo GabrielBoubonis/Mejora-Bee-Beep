@@ -49,16 +49,17 @@ bool GuiChatItem::operator<( const QTreeWidgetItem& item ) const
   if( Bee::qVariantToVNumber( item.data( 0, GuiChatItem::ChatId ) ) == ID_DEFAULT_CHAT )
     return true;
 
-  int chat_messages = unreadMessages();
-  int other_messages = item.data( 0, GuiChatItem::ChatUnreadMessages ).toInt();
-  if( chat_messages != other_messages )
-    return chat_messages < other_messages;
-
+  // the conversation with the last message (sent or received) goes on top
   QDateTime chat_timestamp = lastMessageTimestamp();
   QDateTime other_timestamp = item.data( 0, GuiChatItem::ChatLastMessageTimestamp ).toDateTime();
 
   if( chat_timestamp != other_timestamp )
     return chat_timestamp < other_timestamp;
+
+  int chat_messages = unreadMessages();
+  int other_messages = item.data( 0, GuiChatItem::ChatUnreadMessages ).toInt();
+  if( chat_messages != other_messages )
+    return chat_messages < other_messages;
 
   chat_messages = data( 0, GuiChatItem::ChatMessages ).toInt();
   other_messages = item.data( 0, GuiChatItem::ChatMessages ).toInt();

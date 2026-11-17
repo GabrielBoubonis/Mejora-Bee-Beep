@@ -163,6 +163,7 @@ private slots:
   void openResourceFolder();
   void openDownloadFolder();
   void readAllMessagesInChat( VNumber );
+  void readVisibleChat();
   void recentlyUsedUserStatusSelected();
   void clearRecentlyUsedUserStatus();
   void loadSavedChatsCompleted();

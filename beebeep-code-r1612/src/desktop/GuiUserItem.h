@@ -32,7 +32,7 @@ class GuiUserItem : public QTreeWidgetItem
 {
 
 public:
-  enum UserDataType { UserId = Qt::UserRole+2, ChatId, Messages, UnreadMessages, UserName, Priority, Status, Workgroup };
+  enum UserDataType { UserId = Qt::UserRole+2, ChatId, Messages, UnreadMessages, UserName, Priority, Status, Workgroup, LastMessageTimestamp };
 
   GuiUserItem( QTreeWidget* );
   GuiUserItem( QTreeWidgetItem* );
@@ -46,6 +46,7 @@ public:
   inline void setMessages( int );
   inline int messages() const;
   inline void setUnreadMessages( int );
+  inline void setLastMessageTimestamp( const QDateTime& );
   inline int unreadMessages() const;
   inline void setParentWorkgroup( const QString& );
   inline const QString& parentWorkgroup() const;
@@ -82,6 +83,7 @@ inline void GuiUserItem::setMessages( int num_messages ) { setData( 0, Messages,
 inline int GuiUserItem::messages() const { return data( 0, Messages ).toInt(); }
 inline void GuiUserItem::setUnreadMessages( int unread_messages ) { setData( 0, UnreadMessages, unread_messages ); }
 inline int GuiUserItem::unreadMessages() const { return data( 0, UnreadMessages ).toInt(); }
+inline void GuiUserItem::setLastMessageTimestamp( const QDateTime& dt ) { setData( 0, LastMessageTimestamp, dt ); }
 inline void GuiUserItem::setDefaultIcon( const QIcon& new_value ) { m_defaultIcon = new_value; }
 inline bool GuiUserItem::isWorkgroup() const { return data( 0, Workgroup ).toBool(); }
 inline void GuiUserItem::setParentWorkgroup( const QString& new_value ) { m_parentWorkgroup = new_value; }

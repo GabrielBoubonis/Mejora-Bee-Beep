@@ -503,6 +503,9 @@ void GuiMain::keyPressEvent( QKeyEvent* e )
 void GuiMain::changeEvent( QEvent* e )
 {
   QMainWindow::changeEvent( e );
+  // back from minimized or from another program: the open conversation is now read
+  if( e->type() == QEvent::ActivationChange || e->type() == QEvent::WindowStateChange )
+    QTimer::singleShot( 0, this, SLOT( readVisibleChat() ) );
 }
 
 void GuiMain::closeEvent( QCloseEvent* e )
@@ -3241,6 +3244,7 @@ void GuiMain::showChat( VNumber chat_id )
   fl_chat->show();
   fl_chat->showUp();
   fl_chat->setFocusInChat();
+  QTimer::singleShot( 0, this, SLOT( readVisibleChat() ) );
 }
 
 void GuiMain::changeVCard()
@@ -4910,6 +4914,19 @@ void GuiMain::readAllMessagesInChat( VNumber chat_id )
   beeCore->readAllMessagesInChat( chat_id );
 }
 
+void GuiMain::readVisibleChat()
+{
+  // conversation inside the main window: it is read when it is on screen and BeeBEEP is the active program
+  if( !mp_stackChats || !isVisible() || isMinimized() || !isActiveWindow() )
+    return;
+  GuiFloatingChat* fl_chat = qobject_cast<GuiFloatingChat*>( mp_stackChats->currentWidget() );
+  if( !fl_chat || !fl_chat->isVisible() )
+    return;
+  VNumber chat_id = fl_chat->guiChat()->chatId();
+  if( chat_id != ID_INVALID && ChatManager::instance().chat( chat_id ).unreadMessages() > 0 )
+    readAllMessagesInChat( chat_id );
+}
+
 void GuiMain::saveSession( QSessionManager& )
 {
   qDebug() << "Session manager ask to save and close session";
@@ -5498,6 +5515,9 @@ void GuiMain::onHideEmptyChatsRequest()
 
 void GuiMain::onApplicationFocusChanged( QWidget* old, QWidget* now )
 {
+  if( now && isAncestorOf( now ) )
+    QTimer::singleShot( 0, this, SLOT( readVisibleChat() ) );
+
   if( old == Q_NULLPTR && isAncestorOf( now )  )
   {
 #ifdef BEEBEEP_DEBUG

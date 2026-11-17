@@ -84,7 +84,7 @@ bool Core::dispatchChatMessageReceived( VNumber from_user_id, const Message& m )
   if( cm.alertCanBeSent() )
   {
     c.addUnreadMessage();
-    c.setLastMessageTimestamp( m.timestamp() );
+    c.setLastMessageTimestamp( QDateTime::currentDateTime() );
 #ifdef BEEBEEP_DEBUG
     qDebug() << "Chat" << c.id() << "has" << c.unreadMessages() << "unread messages";
 #endif

@@ -305,6 +305,7 @@ void GuiUserList::setUser( const User& u, bool sort_users )
     {
       item->setChatId( c.id() );
       item->setUnreadMessages( c.unreadMessages() );
+      item->setLastMessageTimestamp( c.lastMessageTimestamp() );
     }
     item->updateUser( u );
   }
@@ -423,6 +424,8 @@ void GuiUserList::onTickEvent( int ticks )
 
 void GuiUserList::updateChat( const Chat& c )
 {
+  foreach( GuiUserItem* item, itemsFromChatId( c.id() ) )
+    item->setLastMessageTimestamp( c.lastMessageTimestamp() );
   setUnreadMessages( c.id(), c.unreadMessages(), false );
   int chat_messages = c.chatMessages() + ChatManager::instance().savedChatSize( c.name() );
   setMessages( c.id(), chat_messages, true );
