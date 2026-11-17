@@ -5397,10 +5397,7 @@ void GuiMain::updateChatColors()
     return;
 
   foreach( GuiFloatingChat* fl_chat, m_floatingChats )
-  {
-    if( fl_chat->guiChat()->chatId() != ID_DEFAULT_CHAT )
-      fl_chat->guiChat()->updateChatColors();
-  }
+    fl_chat->guiChat()->updateChatColors();
 }
 
 void GuiMain::resetAllColors()

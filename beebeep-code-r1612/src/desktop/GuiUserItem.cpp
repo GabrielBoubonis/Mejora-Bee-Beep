@@ -225,10 +225,8 @@ void GuiUserItem::showUserStatus()
     setForeground( 0, Bee::userStatusColor( User::Offline ) );
   else if( user_status == User::Offline )
     setForeground( 0, Bee::userStatusColor( user_status ) );
-  else if( Settings::instance().useDarkStyle() )
-    setForeground( 0, QColor( "#F0F0F0" ) );
   else
-    setForeground( 0, QColor( Qt::black ) );
+    setData( 0, Qt::ForegroundRole, QVariant() );
 }
 
 void GuiUserItem::onTickEvent( int )

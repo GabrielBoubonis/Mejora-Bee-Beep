@@ -119,6 +119,8 @@ namespace Bee
   QColor colorYellow();
   QColor colorOrange();
   QString beeColorsToHtmlText( const QString& );
+  double contrastRatio( const QColor&, const QColor& );
+  QColor readableColor( const QColor&, const QColor& background, double min_ratio = 4.5 );
 
 
   QString pluginFileExtension();

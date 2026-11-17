@@ -84,10 +84,12 @@ void GuiVCard::setVCard( const User& u, VNumber chat_id, bool core_is_connected 
   mp_lPath->setText( user_path );
   m_userColor = u.color();
 
+  // the color of the user, readable on the background of the theme (black users are not invisible in dark mode)
+  QString name_color = Bee::readableColor( QColor( u.color() ), palette().color( QPalette::Window ), 4.5 ).name();
   QString name_txt = "";
   if( u.vCard().hasFullName() && u.vCard().fullName( Settings::instance().useUserFirstNameFirstInFullName() ) != u.name() )
-    name_txt = QString( "<font color=""%1"">%2</font> %3 " ).arg( u.color(), u.vCard().fullName( Settings::instance().useUserFirstNameFirstInFullName() ), tr( "is" ) );
-  name_txt += QString( "<font color=""%1""><b>%2</b></font>" ).arg( u.color(), Bee::replaceHtmlSpecialCharacters( u.name() ) );
+    name_txt = QString( "<font color=""%1"">%2</font> %3 " ).arg( name_color, u.vCard().fullName( Settings::instance().useUserFirstNameFirstInFullName() ), tr( "is" ) );
+  name_txt += QString( "<font color=""%1""><b>%2</b></font>" ).arg( name_color, Bee::replaceHtmlSpecialCharacters( u.name() ) );
   if( !u.localHostName().isEmpty() )
     name_txt.append( QString( " %1" ).arg( tr( "from %1" ).arg( u.localHostName().toLower() ) ) );
   if( !u.domainName().isEmpty() )

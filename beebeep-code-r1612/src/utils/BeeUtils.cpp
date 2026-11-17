@@ -22,6 +22,7 @@
 //////////////////////////////////////////////////////////////////////
 
 #include <QSvgRenderer>
+#include <QtMath>
 #ifdef Q_OS_WIN
   #include <windows.h>
 #endif
@@ -711,15 +712,21 @@ static QPixmap initialsAvatar( const QString& name, const QColor& background, co
     initials = QLatin1String( "?" );
   initials = initials.toUpper();
 
+  QColor bg = background;
+  if( bg.isValid() && (bg.lightness() < 40 || bg.lightness() > 235) )
+  {
+    static const char* soft_colors[] = { "#3b82c4", "#2f9e8f", "#8a63c7", "#c2603a", "#4f7d3a", "#b0477a", "#5a6fb3", "#a07a1c" };
+    bg = QColor( soft_colors[ qHash( name.simplified().toLower() ) % 8 ] );
+  }
   QPixmap pm( avatar_size );
-  pm.fill( background );
+  pm.fill( bg );
   QPainter p( &pm );
   p.setRenderHint( QPainter::TextAntialiasing, true );
   QFont f = QApplication::font();
   f.setBold( true );
   f.setPixelSize( qMax( 7, qRound( avatar_size.height() * (initials.size() > 1 ? 0.38 : 0.48) ) ) );
   p.setFont( f );
-  p.setPen( background.lightness() > 165 ? QColor( "#1b2533" ) : QColor( Qt::white ) );
+  p.setPen( bg.lightness() > 165 ? QColor( "#1b2533" ) : QColor( Qt::white ) );
   p.drawText( QRect( QPoint( 0, 0 ), avatar_size ), Qt::AlignCenter, initials );
   p.end();
   return pm;
@@ -1288,7 +1295,40 @@ bool Bee::isColorNear( const QColor& c1, const QColor& c2 )
 
 bool Bee::isColorVisibleInChat( const QColor& c )
 {
-  return !Bee::isColorNear( c, QColor( Settings::instance().chatBackgroundColor() ) );
+  return contrastRatio( c, QColor( Settings::instance().chatBackgroundColor() ) ) >= 3.0;
+}
+
+static double relativeLuminance( const QColor& c )
+{
+  auto channel = []( double v ) { v /= 255.0; return v <= 0.03928 ? v / 12.92 : qPow( (v + 0.055) / 1.055, 2.4 ); };
+  return 0.2126 * channel( c.red() ) + 0.7152 * channel( c.green() ) + 0.0722 * channel( c.blue() );
+}
+
+double Bee::contrastRatio( const QColor& c1, const QColor& c2 )
+{
+  double l1 = relativeLuminance( c1 );
+  double l2 = relativeLuminance( c2 );
+  return (qMax( l1, l2 ) + 0.05) / (qMin( l1, l2 ) + 0.05);
+}
+
+QColor Bee::readableColor( const QColor& c, const QColor& background, double min_ratio )
+{
+  // Keeps the hue of the color (the color of a user, the color chosen for the text)
+  // but makes it lighter on dark backgrounds and darker on light ones until it can be read
+  if( !c.isValid() )
+    return QColor( themeColor( ThemeText ) );
+  if( contrastRatio( c, background ) >= min_ratio )
+    return c;
+  bool dark_background = relativeLuminance( background ) < 0.2;
+  QColor hsl = c.toHsl();
+  for( int i = 1; i <= 20; i++ )
+  {
+    int lightness = dark_background ? qMin( 255, hsl.lightness() + i * 10 ) : qMax( 0, hsl.lightness() - i * 10 );
+    QColor candidate = QColor::fromHsl( hsl.hslHue(), hsl.hslSaturation(), lightness );
+    if( contrastRatio( candidate, background ) >= min_ratio )
+      return candidate;
+  }
+  return dark_background ? QColor( Qt::white ) : QColor( Qt::black );
 }
 
 QString Bee::beeColorsToHtmlText( const QString& txt )
@@ -1296,7 +1336,7 @@ QString Bee::beeColorsToHtmlText( const QString& txt )
   QString bee_txt = "";
   QString c_y = colorYellow().name();
   for( int i = 0; i < txt.size(); i++ )
-    bee_txt.append( QString( "<font color=%1>%2</font>" ).arg( (i % 2 == 0) ? "#000000" : c_y ).arg( txt.at( i ) ) );
+    bee_txt.append( QString( "<font color=%1>%2</font>" ).arg( (i % 2 == 0) ? themeColor( ThemeText ) : c_y ).arg( txt.at( i ) ) );
   return bee_txt;
 }
 

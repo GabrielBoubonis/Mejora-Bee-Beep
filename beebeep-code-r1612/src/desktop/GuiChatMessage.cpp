@@ -120,7 +120,7 @@ QString GuiChatMessage::formatMessage( const User& u, const ChatMessage& cm, VNu
     if( Settings::instance().chatUseColoredUserNames() )
     {
       if( Bee::isColorVisibleInChat( QColor( u.color() ) ) )
-        html_user_name = QString( "<font color=%1><b>%2</b></font>" ).arg( u.color(), user_name );
+        html_user_name = QString( "<font color=%1><b>%2</b></font>" ).arg( Bee::readableColor( QColor( u.color() ), QColor( Settings::instance().chatBackgroundColor() ), 4.5 ).name(), user_name );
       else
         html_user_name = QString( "<font color=%1><b>%2</b></font>" ).arg( Settings::instance().chatDefaultUserNameColor(), user_name );
     }
@@ -229,8 +229,9 @@ QString GuiChatMessage::formatBubbleMessage( const User& u, const ChatMessage& c
   QString text_color = Bee::themeColor( Bee::ThemeBubbleText );
   if( !cm.isSourceCode() && cm.textColor().isValid() && cm.textColor() != QColor( 0, 0, 0 ) && cm.textColor() != QColor( 255, 255, 255 ) )
   {
+    // the color chosen by the sender is kept only when it can be read on the bubble of this theme
     QColor bubble_bg( Bee::themeColor( is_outgoing ? Bee::ThemeBubbleOut : Bee::ThemeBubbleIn ) );
-    if( !Bee::isColorNear( cm.textColor(), bubble_bg ) )
+    if( Bee::contrastRatio( cm.textColor(), bubble_bg ) >= 4.5 )
       text_color = cm.textColor().name();
   }
 
@@ -264,15 +265,8 @@ QString GuiChatMessage::formatBubbleMessage( const User& u, const ChatMessage& c
     if( cm.isFromAutoresponder() )
       user_name_to_show = QString( "%1 from %2" ).arg( Settings::instance().autoresponderName(), user_name_to_show );
     QColor user_color( u.color() );
-    if( Settings::instance().chatUseColoredUserNames() && user_color.isValid() && !Bee::isColorNear( user_color, bubble_color ) )
-    {
-      // keep the name readable on the bubble
-      if( dark_style && user_color.lightness() < 110 )
-        user_color = user_color.lighter( 160 );
-      else if( !dark_style && user_color.lightness() > 150 )
-        user_color = user_color.darker( 160 );
-      name_color = user_color.name();
-    }
+    if( Settings::instance().chatUseColoredUserNames() && user_color.isValid() )
+      name_color = Bee::readableColor( user_color, bubble_color, 4.5 ).name(); // the color of the user, readable on the bubble
   }
   else if( is_outgoing && cm.isFromAutoresponder() )
   {
